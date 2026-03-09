@@ -12,16 +12,44 @@ datasource db {
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
-// Category model for income/expense categories
+// User model for authentication
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  password     String
+  name         String?
+  email        String?
+  role         String   @default("user") // 'admin' or 'user'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions Transaction[]
+  settings     UserSettings?
+}
+
+// User settings for savings and budget preferences
+model UserSettings {
+  id                    String   @id @default(cuid())
+  monthlyIncome         Float    @default(0) // Monthly income for budget allocation
+  savingsPercentage     Float    @default(20) // Percentage of income to save
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+// Category model for income/expense/savings categories
 model Category {
-  id        String   @id @default(cuid())
-  name      String
-  icon      String
-  color     String
-  type      String   // 'income' or 'expense'
-  budget    Float?   // Monthly budget for expense categories
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  icon            String
+  color           String
+  type            String   // 'income', 'expense', or 'savings'
+  budget          Float?   // Default monthly budget for expense categories
+  allocationPercentage Float? @default(0) // Percentage allocation from income
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   transactions Transaction[]
   budgets      Budget[]
@@ -29,12 +57,12 @@ model Category {
   @@index([type])
 }
 
-// Transaction model for income and expense records
+// Transaction model for income, expense, and savings records
 model Transaction {
   id          String   @id @default(cuid())
   amount      Float
   description String
-  type        String   // 'income' or 'expense'
+  type        String   // 'income', 'expense', or 'savings'
   date        DateTime
   notes       String?
   createdAt   DateTime @default(now())
@@ -42,22 +70,27 @@ model Transaction {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
 
   @@index([type])
   @@index([date])
   @@index([categoryId])
+  @@index([userId])
 }
 
-// Budget model for tracking monthly budgets
+// Budget model for tracking monthly budgets per category
 model Budget {
   id       String   @id @default(cuid())
-  amount   Float    // Budget amount
+  amount   Float    // Budget amount calculated from allocation
   period   String   // 'monthly' or 'yearly'
+  month    Int      // 1-12
+  year     Int      // e.g., 2024
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
-  @@unique([categoryId])
+  @@unique([categoryId, month, year])
 }
