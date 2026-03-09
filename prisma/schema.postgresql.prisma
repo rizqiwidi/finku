@@ -1,0 +1,63 @@
+// Prisma schema for Supabase PostgreSQL
+// Use this file for Vercel/Supabase deployment
+// Rename to schema.prisma when deploying to Vercel
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// Category model for income/expense categories
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String
+  color     String
+  type      String   // 'income' or 'expense'
+  budget    Float?   // Monthly budget for expense categories
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@index([type])
+}
+
+// Transaction model for income and expense records
+model Transaction {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String
+  type        String   // 'income' or 'expense'
+  date        DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([type])
+  @@index([date])
+  @@index([categoryId])
+}
+
+// Budget model for tracking monthly budgets
+model Budget {
+  id       String   @id @default(cuid())
+  amount   Float    // Budget amount
+  period   String   // 'monthly' or 'yearly'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([categoryId])
+}
