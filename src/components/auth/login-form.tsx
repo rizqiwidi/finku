@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { LayoutDashboard, Loader2, Eye, EyeOff, Wallet, TrendingUp, PiggyBank, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,37 +13,13 @@ const features = [
   { icon: PiggyBank, text: 'Raih target tabungan', color: 'text-amber-500' },
 ];
 
-// Generate random avatar URLs using pravatar.cc (lightweight, no server storage)
-const getRandomAvatar = (seed: number) => 
-  `https://i.pravatar.cc/40?img=${seed}`;
-
 export function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeUsers, setActiveUsers] = useState(0);
   const { login } = useAuth();
-
-  // Fetch active users count
-  useEffect(() => {
-    const fetchActiveUsers = async () => {
-      try {
-        const response = await fetch('/api/users/active');
-        const data = await response.json();
-        setActiveUsers(data.activeUsers || 1);
-      } catch {
-        setActiveUsers(1);
-      }
-    };
-
-    fetchActiveUsers();
-    
-    // Update every 30 seconds for realtime effect
-    const interval = setInterval(fetchActiveUsers, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,9 +36,6 @@ export function LoginForm() {
 
     setIsLoading(false);
   };
-
-  // Generate random avatar seeds for display
-  const avatarSeeds = [1, 2, 3, 4, 5];
 
   return (
     <div className="h-screen flex relative overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-teal-50 dark:from-emerald-950/20 dark:via-background dark:to-teal-950/20">
@@ -113,24 +86,6 @@ export function LoginForm() {
                 </span>
               </div>
             ))}
-          </div>
-
-          <div className="mt-8 flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {avatarSeeds.slice(0, 4).map((seed) => (
-                <img
-                  key={seed}
-                  src={getRandomAvatar(seed)}
-                  alt="User"
-                  className="w-9 h-9 rounded-full border-2 border-background object-cover bg-muted"
-                  loading="lazy"
-                />
-              ))}
-            </div>
-            <div>
-              <p className="text-foreground font-semibold text-sm">{activeUsers.toLocaleString()}+ Pengguna Aktif</p>
-              <p className="text-muted-foreground text-xs">bergabung dalam platform</p>
-            </div>
           </div>
         </div>
       </div>
@@ -219,26 +174,6 @@ export function LoginForm() {
                 )}
               </Button>
             </form>
-
-            {/* Mobile only - Active users */}
-            <div className="mt-5 pt-4 border-t border-border lg:hidden">
-              <div className="flex items-center justify-center gap-2">
-                <div className="flex -space-x-1.5">
-                  {avatarSeeds.slice(0, 3).map((seed) => (
-                    <img
-                      key={seed}
-                      src={getRandomAvatar(seed + 10)}
-                      alt="User"
-                      className="w-6 h-6 rounded-full border border-background object-cover bg-muted"
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {activeUsers.toLocaleString()}+ pengguna aktif
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
