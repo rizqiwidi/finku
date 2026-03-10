@@ -2,15 +2,16 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 // Prisma schema for Finku
-// Supports both SQLite (local dev) and PostgreSQL (Supabase/Vercel)
+// PostgreSQL for Supabase/Vercel
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "sqlite"
+  provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // User model for authentication

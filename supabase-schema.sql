@@ -73,13 +73,14 @@ CREATE TABLE IF NOT EXISTS "Budget" (
 );
 
 -- 8. Insert user admin default
--- Password: 94621732 (bcrypt hash)
-INSERT INTO "User" (id, username, password, name, role)
+-- Password: 94621732 (plain text - sesuai dengan login system)
+INSERT INTO "User" (id, username, password, name, email, role)
 VALUES (
   'admin-user-001',
   'admin',
-  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.qU4TL1ZQMViPqZJBVy',
+  '94621732',
   'Administrator',
+  'admin@finku.id',
   'admin'
 ) ON CONFLICT (username) DO NOTHING;
 
