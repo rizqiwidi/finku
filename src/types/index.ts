@@ -1,6 +1,6 @@
 // Types for Personal Finance Management App
 
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'savings';
 
 export interface Category {
   id: string;

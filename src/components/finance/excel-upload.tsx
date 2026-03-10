@@ -112,8 +112,9 @@ export function ExcelUpload() {
           let date: Date;
           
           if (typeof dateValue === 'number') {
-            date = XLSX.SSF.parse_date_code(dateValue);
-            date = new Date(date.y, date.m - 1, date.d);
+            // Excel date serial number
+            const parsedDate = XLSX.SSF.parse_date_code(dateValue) as { y: number; m: number; d: number };
+            date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
           } else {
             date = new Date(dateValue);
           }

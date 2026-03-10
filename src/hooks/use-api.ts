@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Transaction, Category, Budget } from '@/types';
+import type { Transaction, Category } from '@/types';
 
 // API helper functions
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
@@ -33,13 +33,15 @@ interface CategorySpending {
   percentage: number;
 }
 
-interface BudgetProgress extends Budget {
+interface BudgetProgress {
   id: string;
   categoryId: string;
   category: Category;
   amount: number;
   spent: number;
   period: string;
+  month: number;
+  year: number;
 }
 
 // Categories hooks

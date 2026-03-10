@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     if (type === 'monthly' || type === 'trend') {
       // Get last 6 months data
       const now = new Date();
-      const monthlyData = [];
+      const monthlyData: { month: string; income: number; expenses: number }[] = [];
 
       for (let i = 5; i >= 0; i--) {
         const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);

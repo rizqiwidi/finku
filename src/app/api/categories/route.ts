@@ -40,11 +40,14 @@ export async function POST(request: Request) {
 
     // If it's an expense category with a budget, create a budget entry
     if (type === 'expense' && budget) {
+      const now = new Date();
       await prisma.budget.create({
         data: {
           categoryId: category.id,
           amount: budget,
           period: 'monthly',
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
         },
       });
     }
