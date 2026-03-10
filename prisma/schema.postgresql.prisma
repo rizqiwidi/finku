@@ -38,7 +38,7 @@ model UserSettings {
   updatedAt             DateTime @updatedAt
 
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Category model for income/expense/savings categories
@@ -73,7 +73,7 @@ model Transaction {
   updatedAt   DateTime @updatedAt
 
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -93,7 +93,7 @@ model Budget {
   updatedAt DateTime @updatedAt
 
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

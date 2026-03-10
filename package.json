@@ -14,6 +14,7 @@
     "db:reset": "prisma migrate reset",
     "db:seed": "bunx tsx prisma/seed.ts",
     "admin:bootstrap": "bunx tsx scripts/bootstrap-admin.ts",
+    "users:backfill-template": "bunx tsx scripts/backfill-user-template-data.ts",
     "passwords:migrate": "bunx tsx scripts/migrate-password-hash.ts",
     "postinstall": "prisma generate"
   },

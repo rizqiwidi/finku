@@ -58,12 +58,20 @@ $env:ADMIN_BOOTSTRAP_EMAIL="admin@example.com"
 bun run admin:bootstrap
 ```
 
-5. Optional: seed demo transactions for the bootstrap admin.
+This creates the admin and provisions per-user template data:
+
+- default categories
+- current-month budgets
+- sample transactions
+- user settings with demo monthly income
+
+5. If you already have users in the database and want to backfill the same template data for all of them:
 
 ```bash
-$env:SEED_SAMPLE_DATA="true"
-bun run db:seed
+bun run users:backfill-template
 ```
+
+This backfill is idempotent and only fills missing template data; it does not delete or replace existing user-owned records.
 
 6. Start the app.
 
@@ -78,6 +86,7 @@ bun run dev
 - Detail routes perform ownership checks before read, update, or delete.
 - Passwords are stored as bcrypt hashes only.
 - Existing plaintext passwords can be migrated with a dedicated script.
+- New users created by admin automatically receive their own template categories, budgets, and sample transactions.
 - Official financial summary formula:
   `balance = income - expenses - savings`
 - Official savings rate formula:
@@ -101,6 +110,7 @@ bun run db:generate
 bun run db:push
 bun run db:seed
 bun run admin:bootstrap
+bun run users:backfill-template
 bun run passwords:migrate
 ```
 
@@ -111,8 +121,9 @@ For a fresh Supabase database:
 1. Apply [`supabase-schema.sql`](./supabase-schema.sql) or run `bun run db:push`.
 2. Set `ADMIN_BOOTSTRAP_*` env vars.
 3. Run `bun run admin:bootstrap`.
+4. If you must bootstrap from Supabase SQL Editor, start from [`scripts/supabase-bootstrap-admin.template.sql`](./scripts/supabase-bootstrap-admin.template.sql) and replace the placeholders locally.
 
-`supabase-schema.sql` intentionally does not insert any default admin or shared sample data.
+`supabase-schema.sql` intentionally does not insert any default admin or shared sample data. Bootstrap provisioning happens through the app layer so each user gets isolated template data under their own `userId`.
 
 ## Optional feature flags
 

@@ -146,7 +146,7 @@ src/app/page.tsx
 ## 11. Checklist Progress
 
 ## Phase 0 (Blocking)
-- [x] P0-01 Isolasi data `userId` pada single DB shared Supabase.
+- [x] P0-01 Isolasi data `userId` pada single DB shared Supabase, termasuk parity bootstrap SQL terhadap schema relasi private.
 - [x] P0-02 Password hardening: create/update hash bcrypt, login plaintext fallback dihapus, script migrasi ditambahkan.
 - [x] P0-03 JWT hardening: env wajib valid, placeholder/fallback hardcoded dihapus dari runtime path.
 - [x] P0-04 Hapus kredensial admin default statis, ganti bootstrap aman via env.
@@ -167,6 +167,9 @@ src/app/page.tsx
 - [x] P2-02 Lint + tests: quality gate diperketat, test kritis summary/env ditambahkan, lint/build/test diverifikasi hijau.
 - [x] P2-03 Cleanup dead code: artefak store/header/footer lama dihapus dari codebase.
 - [x] P2-04 Documentation finalization: README, env examples, dan worklog diselaraskan dengan flow hardening terbaru.
+
+## Post-PRD Follow-up
+- [x] Template data per-user (kategori, budget, transaksi contoh) kini otomatis diprovision untuk bootstrap admin, user baru buatan admin, dan tersedia script backfill untuk user existing.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -191,3 +194,5 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-10: Import batch diperkeras menjadi CSV-only dengan validasi header, ukuran file, jumlah baris, nilai numerik, tanggal, dan blokir formula injection; dependency `xlsx` dihapus dari dependency tree aplikasi.
 - 2026-03-10: Phase 2 quality gate ditutup dengan ESLint yang lebih ketat, test kritis untuk env dan formula summary, serta script test yang dibersihkan dari warning `MODULE_TYPELESS_PACKAGE_JSON`.
 - 2026-03-10: Dead code lama (`finance-store`, `finance/header`, `finance/footer`) dibersihkan dan dokumentasi setup/env di README serta env examples diselaraskan dengan arsitektur hardening terbaru.
+- 2026-03-10: `supabase-schema.sql` diselaraskan dengan schema Prisma/runtime: `updatedAt` kini auto-update via trigger, relasi delete dibuat eksplisit, dan bootstrap SQL mengasumsikan `id` disuplai Prisma (`cuid`) alih-alih UUID fallback database.
+- 2026-03-10: Provisioning user dipusatkan agar setiap user mendapat template data privat miliknya sendiri (`UserSettings`, kategori default, budget bulan berjalan, dan transaksi contoh); admin bootstrap, create-user oleh admin, dan script backfill kini memakai flow yang sama dengan sifat idempotent/non-destruktif untuk data existing.
