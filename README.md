@@ -39,6 +39,11 @@ Required env vars:
 - `DIRECT_DATABASE_URL`
 - `JWT_SECRET`
 
+Optional env vars for assistant features:
+
+- `OCR_SPACE_API_KEY`
+- `GROQ_API_KEY`
+
 `JWT_SECRET` must be a random string with at least 32 characters. Placeholder values are rejected at runtime.
 For Supabase pooler connections, `DATABASE_URL` should include `?pgbouncer=true&connection_limit=1` to avoid Prisma prepared statement errors.
 
@@ -99,6 +104,12 @@ bun run dev
 - File size is limited to 5MB.
 - Each import is capped at 1000 rows.
 - Import rejects dangerous spreadsheet formula prefixes and invalid dates/amounts.
+
+## OCR and AI input
+
+- `Scan Struk` uses OCR.Space to extract receipt text, then prepares an editable transaction draft.
+- `Tambah Transaksi` now supports manual input or AI-assisted draft generation from chat/voice.
+- Voice input is transcribed server-side through Groq before being turned into a transaction draft.
 
 ## Scripts
 

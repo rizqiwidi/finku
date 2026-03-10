@@ -44,6 +44,14 @@ export function getJwtSecret() {
   return new TextEncoder().encode(secret);
 }
 
+export function getOcrSpaceApiKey() {
+  return getRequiredEnv('OCR_SPACE_API_KEY');
+}
+
+export function getGroqApiKey() {
+  return getRequiredEnv('GROQ_API_KEY');
+}
+
 export function getBootstrapAdminConfig(): BootstrapAdminConfig | null {
   const username = getOptionalEnv('ADMIN_BOOTSTRAP_USERNAME');
   const password = getOptionalEnv('ADMIN_BOOTSTRAP_PASSWORD');

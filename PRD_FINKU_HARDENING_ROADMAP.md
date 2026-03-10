@@ -175,6 +175,7 @@ src/app/page.tsx
 - [x] Dialog settings dan import kini memakai layout header tetap + body scroll, import mendukung CSV/XLSX/XLSM tervalidasi, dan background dashboard/login state diperkuat untuk mode terang maupun gelap.
 - [x] Summary cards frontend dipindahkan ke card solid tanpa gradient, responsivitas mobile diperketat agar nominal/aksi tidak terpotong, axis chart dark mode diperjelas, dan chart kategori kini bisa di-switch antara pengeluaran dan pemasukan.
 - [x] Sidebar desktop dipisah ke layer fixed agar tidak tertinggal saat scroll, dashboard diberi filter bulan/tahun untuk summary+chart+list, tinggi chart dikunci agar switch kategori tidak membuat card membesar, dan kartu `Total Tabungan` memakai akumulasi tabungan all-time.
+- [x] Sidebar kini memiliki tombol tutup yang jelas di dalam panel, quick actions ditambah scan struk OCR dengan tahap review/edit sebelum simpan, dan popup transaksi mendukung mode manual atau AI (chat/suara) melalui service eksternal berbasis env secret.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -208,3 +209,4 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-11: Dialog settings/import dirapikan menjadi modal dengan header tetap dan area konten scroll internal; import dibuka kembali untuk file CSV/XLSX/XLSM memakai parser `read-excel-file` agar tetap menghindari dependensi `xlsx` lama, dan background halaman utama diperkuat dengan layer gradient yang lebih terbaca pada light/dark mode.
 - 2026-03-11: Summary cards dashboard/riwayat diganti ke background solid dengan aksen warna agar tidak menyatu dengan gradient halaman, grid dan tombol aksi dipadatkan ulang untuk mobile, axis chart bulanan menggunakan warna CSS variable yang valid di dark mode, dan chart kategori diberi switch pengeluaran/pemasukan yang memicu query server sesuai tipe transaksi.
 - 2026-03-11: Sidebar desktop diubah menjadi panel fixed independen dari scroll halaman agar menu tidak tertinggal; dashboard kini memiliki filter bulan/tahun yang mengalir ke summary, budget, transaksi terbaru, tren 6 bulan, dan pie chart kategori, sementara `Total Tabungan` dipisah ke aggregate all-time agar tidak lagi terikat filter tanggal bulanan.
+- 2026-03-11: Flow input transaksi diperluas dengan dua jalur baru: scan struk via OCR.Space yang menghasilkan draft editable sebelum create, dan asisten AI transaksi via Groq yang menerima prompt chat atau transkrip suara untuk mengisi form. Secret OCR/Groq diperlakukan sebagai env runtime, bukan hardcoded di repo.

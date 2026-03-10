@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  PanelLeftClose,
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ import { TransactionsTable } from '@/components/transactions/transactions-table'
 import { SettingsDialog } from '@/components/settings/settings-dialog';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ExcelUpload } from '@/components/finance/excel-upload';
+import { ReceiptScanDialog } from '@/components/finance/receipt-scan-dialog';
 import { CategorySettingsPage } from '@/components/categories/category-settings-page';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -118,21 +120,35 @@ export default function Home() {
   const renderSidebarContent = () => (
     <>
       <div className="p-4 border-b border-sidebar-border shrink-0">
-        <div className="flex items-center gap-3">
-          <motion.div 
-            className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/30"
-            whileHover={{ scale: 1.05 }}
-          >
-            <LayoutDashboard className="w-5 h-5 text-white" />
-          </motion.div>
-          <div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
-              Finku
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {user.name || user.username}
-            </p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <motion.div 
+              className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/30"
+              whileHover={{ scale: 1.05 }}
+            >
+              <LayoutDashboard className="w-5 h-5 text-white" />
+            </motion.div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+                Finku
+              </h1>
+              <p className="truncate text-xs text-muted-foreground">
+                {user.name || user.username}
+              </p>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSidebarOpen(false);
+              setMobileMenuOpen(false);
+            }}
+            className="w-full justify-start gap-2 border-sidebar-border bg-background/70 text-foreground hover:bg-sidebar-accent"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+            Tutup Sidebar
+          </Button>
         </div>
       </div>
 
@@ -394,6 +410,7 @@ export default function Home() {
                   className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end"
                 >
                   <ExcelUpload />
+                  <ReceiptScanDialog />
                   <AddTransactionDialog 
                     editTransaction={editTransaction} 
                     onClose={handleCloseEdit} 
