@@ -1,33 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
 import prisma from '@/lib/db';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-);
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    const userId = payload.userId as string;
+    const user = await requireAuthUser();
 
     const settings = await prisma.userSettings.findUnique({
-      where: { userId },
+      where: { userId: user.id },
     });
 
     if (!settings) {
       // Create default settings if not exists
       const newSettings = await prisma.userSettings.create({
         data: {
-          userId,
+          userId: user.id,
           monthlyIncome: 0,
           savingsPercentage: 20,
         },
@@ -37,6 +24,13 @@ export async function GET() {
 
     return NextResponse.json(settings);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching settings:', error);
     return NextResponse.json(
       { error: 'Failed to fetch settings' },
@@ -47,27 +41,19 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    const userId = payload.userId as string;
+    const user = await requireAuthUser();
 
     const body = await request.json();
     const { monthlyIncome, savingsPercentage } = body;
 
     const settings = await prisma.userSettings.upsert({
-      where: { userId },
+      where: { userId: user.id },
       update: {
         monthlyIncome: monthlyIncome ?? undefined,
         savingsPercentage: savingsPercentage ?? undefined,
       },
       create: {
-        userId,
+        userId: user.id,
         monthlyIncome: monthlyIncome ?? 0,
         savingsPercentage: savingsPercentage ?? 20,
       },
@@ -75,6 +61,13 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(settings);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error updating settings:', error);
     return NextResponse.json(
       { error: 'Failed to update settings' },

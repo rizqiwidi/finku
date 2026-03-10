@@ -1,40 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-);
-
-async function getAdminUser() {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) return null;
-
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    const userId = payload.userId as string;
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true },
-    });
-
-    if (!user || user.role !== 'admin') return null;
-    return user;
-  } catch {
-    return null;
-  }
-}
+import { isAuthError, requireAdminUser } from '@/lib/auth-server';
+import { createUserWithDefaults, normalizeOptionalText } from '@/lib/user-service';
 
 export async function GET() {
   try {
-    const admin = await getAdminUser();
-    if (!admin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requireAdminUser();
 
     const users = await prisma.user.findMany({
       select: {
@@ -50,6 +21,13 @@ export async function GET() {
 
     return NextResponse.json(users);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching users:', error);
     return NextResponse.json(
       { error: 'Failed to fetch users' },
@@ -60,15 +38,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await getAdminUser();
-    if (!admin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requireAdminUser();
 
     const body = await request.json();
     const { username, password, name, email, role } = body;
+    const normalizedUsername = typeof username === 'string' ? username.trim() : '';
 
-    if (!username || !password) {
+    if (!normalizedUsername || !password) {
       return NextResponse.json(
         { error: 'Username and password are required' },
         { status: 400 }
@@ -77,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // Check if username exists
     const existingUser = await prisma.user.findUnique({
-      where: { username },
+      where: { username: normalizedUsername },
     });
 
     if (existingUser) {
@@ -87,26 +63,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.create({
-      data: {
-        username,
-        password, // In production, hash the password
-        name,
-        email,
-        role: role || 'user',
-      },
-      select: {
-        id: true,
-        username: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
+    const user = await createUserWithDefaults({
+      username: normalizedUsername,
+      password,
+      name: normalizeOptionalText(name),
+      email: normalizeOptionalText(email),
+      role: role || 'user',
     });
 
-    return NextResponse.json(user, { status: 201 });
+    return NextResponse.json(
+      {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+      { status: 201 }
+    );
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error creating user:', error);
     return NextResponse.json(
       { error: 'Failed to create user' },

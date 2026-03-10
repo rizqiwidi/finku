@@ -32,7 +32,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "prefer-const": "off",
     "no-unused-vars": "off",
     "no-console": "off",
-    "no-debugger": "off",
+    "no-debugger": "error",
     "no-empty": "off",
     "no-irregular-whitespace": "off",
     "no-case-declarations": "off",
@@ -40,7 +40,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-mixed-spaces-and-tabs": "off",
     "no-redeclare": "off",
     "no-undef": "off",
-    "no-unreachable": "off",
+    "no-unreachable": "error",
     "no-useless-escape": "off",
   },
 }, {

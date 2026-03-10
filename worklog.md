@@ -11,7 +11,7 @@ Work Log:
 - Added BudgetAllocationDialog component with improved slider logic
 - Updated BudgetProgress to show "Atur" button next to badge
 - Added ThemeToggle component for dark/light mode switching
-- Created ExcelUpload component for importing transactions from Excel/CSV
+- Created ExcelUpload component for importing transactions
 - Updated TransactionsTable with date range filter
 - Improved pie chart to show percentage labels inside
 - Renamed app from "FinanceFlow" to "Finku"
@@ -27,3 +27,8 @@ Stage Summary:
 - Transaction history has date range filter
 - Pie chart shows percentages inside each slice
 - App renamed to "Finku"
+
+Follow-up hardening:
+- Phase 0 and Phase 1 roadmap items were completed with single-DB user isolation by `userId`
+- CSV import replaced the vulnerable `xlsx` dependency and now uses strict input validation
+- Unused demo/state artifacts (`finance-store`, old finance header/footer) were removed

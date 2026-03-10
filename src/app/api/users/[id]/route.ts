@@ -1,36 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-);
+import { isAuthError, requireAdminUser } from '@/lib/auth-server';
+import { hashPassword, normalizeOptionalText } from '@/lib/user-service';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-async function getAdminUser() {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) return null;
-
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    const userId = payload.userId as string;
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true },
-    });
-
-    if (!user || user.role !== 'admin') return null;
-    return user;
-  } catch {
-    return null;
-  }
 }
 
 export async function PUT(
@@ -38,10 +12,7 @@ export async function PUT(
   { params }: RouteParams
 ) {
   try {
-    const admin = await getAdminUser();
-    if (!admin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requireAdminUser();
 
     const { id } = await params;
     const body = await request.json();
@@ -54,10 +25,22 @@ export async function PUT(
       password?: string;
     } = {};
 
-    if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
+    if (name !== undefined) updateData.name = normalizeOptionalText(name);
+    if (email !== undefined) updateData.email = normalizeOptionalText(email);
     if (role !== undefined) updateData.role = role;
-    if (password) updateData.password = password;
+    if (password) updateData.password = await hashPassword(password);
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
 
     const user = await prisma.user.update({
       where: { id },
@@ -74,6 +57,13 @@ export async function PUT(
 
     return NextResponse.json(user);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error updating user:', error);
     return NextResponse.json(
       { error: 'Failed to update user' },
@@ -87,10 +77,7 @@ export async function DELETE(
   { params }: RouteParams
 ) {
   try {
-    const admin = await getAdminUser();
-    if (!admin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const admin = await requireAdminUser();
 
     const { id } = await params;
 
@@ -102,12 +89,31 @@ export async function DELETE(
       );
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
     await prisma.user.delete({
       where: { id },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error deleting user:', error);
     return NextResponse.json(
       { error: 'Failed to delete user' },

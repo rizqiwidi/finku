@@ -128,7 +128,10 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
   const totalExpensePercentage = categories.reduce((sum, c) => sum + (c.allocationPercentage || 0), 0);
   const totalSavingsPercentage = savingsCategories.reduce((sum, c) => sum + (c.allocationPercentage || 0), 0);
   const totalAllocated = totalExpensePercentage + totalSavingsPercentage;
+  const normalizedTotalAllocated = Number(totalAllocated.toFixed(2));
   const remainingPercentage = Math.max(0, 100 - totalAllocated);
+  const isOverAllocated = normalizedTotalAllocated > 100;
+  const isFullyAllocated = normalizedTotalAllocated === 100;
 
   // Handle slider change
   const handleSliderChange = (categoryId: string, value: number[], isSavings: boolean) => {
@@ -316,7 +319,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto border-border bg-card text-card-foreground">
         <DialogHeader>
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -328,14 +331,14 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             </div>
             <div>
               <DialogTitle className="text-lg font-bold">Alokasi Anggaran</DialogTitle>
-              <p className="text-sm text-slate-400">{monthName}</p>
+              <p className="text-sm text-muted-foreground">{monthName}</p>
             </div>
           </motion.div>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="space-y-4 py-3">
@@ -343,18 +346,18 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/30"
+              className="budget-allocation-muted p-4"
             >
               <div className="flex items-center justify-between">
-                <Label className="font-semibold text-slate-200">Gaji/Bulan</Label>
+                <Label className="font-semibold text-foreground">Gaji/Bulan</Label>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-emerald-400 text-sm font-medium">Rp</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 text-sm font-medium">Rp</span>
                   <Input
                     type="text"
                     value={formatIncomeDisplay(monthlyIncome)}
                     onChange={(e) => handleIncomeChange(e.target.value.replace(/\D/g, ''))}
                     placeholder="0"
-                    className="w-36 text-right font-bold h-9 bg-slate-900/50 border-slate-600 text-white focus:border-emerald-500"
+                    className="h-9 w-36 border-border bg-background text-right font-bold text-foreground focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -368,20 +371,20 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
               className="space-y-2"
             >
               <div className="flex items-center justify-between">
-                <Label className="font-semibold text-slate-200">Total Alokasi</Label>
-                <span className={`font-bold ${totalAllocated > 100 ? 'text-red-400' : totalAllocated >= 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                <Label className="font-semibold text-foreground">Total Alokasi</Label>
+                <span className={`font-bold ${isOverAllocated ? 'text-destructive' : isFullyAllocated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                   {totalAllocated.toFixed(2).replace('.', ',')}%
                 </span>
               </div>
-              <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-3 overflow-hidden rounded-full bg-muted">
                 <motion.div 
-                  className={`h-full rounded-full ${totalAllocated > 100 ? 'bg-red-500' : totalAllocated >= 100 ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-amber-500'}`}
+                  className={`h-full rounded-full ${isOverAllocated ? 'bg-red-500' : isFullyAllocated ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-amber-500'}`}
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(totalAllocated, 100)}%` }}
                   transition={{ duration: 0.5 }}
                 />
               </div>
-              <div className="flex justify-between text-xs text-slate-400">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Terisi: {totalAllocated.toFixed(2).replace('.', ',')}%</span>
                 <span>Sisa: {remainingPercentage.toFixed(2).replace('.', ',')}%</span>
               </div>
@@ -395,7 +398,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                 transition={{ delay: 0.1 }}
                 className="space-y-2"
               >
-                <h4 className="font-semibold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-red-500" />
                   Pengeluaran ({totalExpensePercentage.toFixed(2).replace('.', ',')}%)
                 </h4>
@@ -411,7 +414,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 + index * 0.03 }}
-                        className="p-3 bg-slate-900/50 rounded-xl border border-slate-700/50 space-y-2"
+                        className="budget-allocation-panel p-3 space-y-2"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -423,7 +426,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                             </div>
                             <span className="font-medium text-sm">{category.name}</span>
                           </div>
-                          <span className="text-sm font-bold text-slate-300">
+                          <span className="text-sm font-bold text-foreground">
                             {formatCurrency(allocatedAmount)}
                           </span>
                         </div>
@@ -441,9 +444,9 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                             value={formatPercentDisplay(category.allocationPercentage)}
                             onChange={(e) => handlePercentageInput(category.id, e.target.value, false)}
                             placeholder="0"
-                            className="w-16 h-8 text-center text-sm bg-slate-900/50 border-slate-600 text-white"
+                            className="h-8 w-16 border-border bg-background text-center text-sm text-foreground"
                           />
-                          <span className="text-xs text-slate-500">%</span>
+                          <span className="text-xs text-muted-foreground">%</span>
                         </div>
                       </motion.div>
                     );
@@ -458,9 +461,9 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="space-y-2 pt-2 border-t border-slate-700"
+                className="space-y-2 border-t border-border pt-2"
               >
-                <h4 className="font-semibold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
                   Tabungan ({totalSavingsPercentage.toFixed(2).replace('.', ',')}%)
                 </h4>
@@ -476,7 +479,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.15 + index * 0.03 }}
-                        className="p-3 bg-slate-900/50 rounded-xl border border-slate-700/50 space-y-2"
+                        className="budget-allocation-panel p-3 space-y-2"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -488,7 +491,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                             </div>
                             <span className="font-medium text-sm">{category.name}</span>
                           </div>
-                          <span className="text-sm font-bold text-slate-300">
+                          <span className="text-sm font-bold text-foreground">
                             {formatCurrency(allocatedAmount)}
                           </span>
                         </div>
@@ -506,9 +509,9 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                             value={formatPercentDisplay(category.allocationPercentage)}
                             onChange={(e) => handlePercentageInput(category.id, e.target.value, true)}
                             placeholder="0"
-                            className="w-16 h-8 text-center text-sm bg-slate-900/50 border-slate-600 text-white"
+                            className="h-8 w-16 border-border bg-background text-center text-sm text-foreground"
                           />
-                          <span className="text-xs text-slate-500">%</span>
+                          <span className="text-xs text-muted-foreground">%</span>
                         </div>
                       </motion.div>
                     );
@@ -523,18 +526,22 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className={`p-3 rounded-xl text-sm ${
-                totalAllocated >= 100 
-                  ? 'bg-emerald-500/20 border border-emerald-500/30' 
-                  : totalAllocated > 100 
-                    ? 'bg-red-500/20 border border-red-500/30'
-                    : 'bg-amber-500/20 border border-amber-500/30'
+                isOverAllocated
+                  ? 'border border-red-500/30 bg-red-500/10'
+                  : isFullyAllocated
+                    ? 'border border-emerald-500/30 bg-emerald-500/10'
+                    : 'border border-amber-500/30 bg-amber-500/10'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-white">
-                  {totalAllocated >= 100 ? '✓ Alokasi Sempurna!' : totalAllocated > 100 ? '⚠ Melebihi 100%' : 'ℹ Tersisa ' + remainingPercentage.toFixed(2).replace('.', ',') + '%'}
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-foreground">
+                  {isOverAllocated
+                    ? 'Melebihi 100%'
+                    : isFullyAllocated
+                      ? 'Alokasi Sempurna'
+                      : `Tersisa ${remainingPercentage.toFixed(2).replace('.', ',')}%`}
                 </span>
-                <span className="font-bold text-slate-200">
+                <span className="font-bold text-foreground">
                   {formatCurrency(Math.round(incomeValue * totalAllocated / 100))} / {formatCurrency(incomeValue)}
                 </span>
               </div>
@@ -548,8 +555,8 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             >
               <Button 
                 onClick={handleSaveAllocation}
-                disabled={isSaving || totalAllocated > 100}
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25"
+                disabled={isSaving || isOverAllocated}
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600"
               >
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />

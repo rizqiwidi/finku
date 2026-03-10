@@ -1,15 +1,20 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthUser();
     const { id } = await params;
 
-    const transaction = await prisma.transaction.findUnique({
-      where: { id },
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
       include: {
         category: true,
       },
@@ -24,6 +29,13 @@ export async function GET(
 
     return NextResponse.json(transaction);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching transaction:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transaction' },
@@ -37,13 +49,31 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthUser();
     const { id } = await params;
     const body = await request.json();
     const { amount, description, categoryId, date, notes } = body;
 
-    // Get category to update type if needed
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    const existingTransaction = await prisma.transaction.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    if (!existingTransaction) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      );
+    }
+
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId: user.id,
+      },
     });
 
     if (!category) {
@@ -70,6 +100,13 @@ export async function PUT(
 
     return NextResponse.json(transaction);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error updating transaction:', error);
     return NextResponse.json(
       { error: 'Failed to update transaction' },
@@ -83,14 +120,32 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthUser();
     const { id } = await params;
 
-    await prisma.transaction.delete({
-      where: { id },
+    const deleted = await prisma.transaction.deleteMany({
+      where: {
+        id,
+        userId: user.id,
+      },
     });
+
+    if (deleted.count === 0) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error deleting transaction:', error);
     return NextResponse.json(
       { error: 'Failed to delete transaction' },

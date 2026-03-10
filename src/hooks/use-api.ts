@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Transaction, Category } from '@/types';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import type { Transaction, Category, FinancialSummary } from '@/types';
 
 // API helper functions
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
@@ -11,11 +11,7 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 // Types for API responses
-interface SummaryResponse {
-  balance: number;
-  income: number;
-  expenses: number;
-  savingsRate: number;
+interface SummaryResponse extends FinancialSummary {
   month: number;
   year: number;
 }
@@ -42,6 +38,15 @@ interface BudgetProgress {
   period: string;
   month: number;
   year: number;
+}
+
+export function invalidateFinanceQueries(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+    queryClient.invalidateQueries({ queryKey: ['summary'] }),
+    queryClient.invalidateQueries({ queryKey: ['budgets'] }),
+    queryClient.invalidateQueries({ queryKey: ['charts'] }),
+  ]);
 }
 
 // Categories hooks
@@ -85,10 +90,7 @@ export function useCreateTransaction() {
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['summary'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      return invalidateFinanceQueries(queryClient);
     },
   });
 }
@@ -113,10 +115,7 @@ export function useUpdateTransaction() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['summary'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      return invalidateFinanceQueries(queryClient);
     },
   });
 }
@@ -130,10 +129,23 @@ export function useDeleteTransaction() {
         method: 'DELETE',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['summary'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      return invalidateFinanceQueries(queryClient);
+    },
+  });
+}
+
+export function useDeleteTransactionsBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      fetchApi<{ deletedCount: number }>('/api/transactions/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      }),
+    onSuccess: () => {
+      return invalidateFinanceQueries(queryClient);
     },
   });
 }

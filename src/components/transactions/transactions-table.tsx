@@ -63,12 +63,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useTransactions, useDeleteTransaction } from '@/hooks/use-api';
+import { useTransactions, useDeleteTransactionsBulk } from '@/hooks/use-api';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { useQueryClient } from '@tanstack/react-query';
+import { calculateFinancialSummary } from '@/lib/finance-summary';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Wallet,
@@ -107,8 +107,7 @@ export function TransactionsTable() {
     selectedType === 'all' ? year : undefined
   );
   
-  const deleteMutation = useDeleteTransaction();
-  const queryClient = useQueryClient();
+  const bulkDeleteMutation = useDeleteTransactionsBulk();
 
   // Filter transactions based on type and date
   const filteredTransactions = transactions?.filter((t: Transaction) => {
@@ -165,13 +164,11 @@ export function TransactionsTable() {
   }));
 
   // Calculate totals
-  const totalIncome = filteredTransactions?.filter((t: Transaction) => t.type === 'income')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0) || 0;
-  const totalExpense = filteredTransactions?.filter((t: Transaction) => t.type === 'expense')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0) || 0;
-  const totalSavings = filteredTransactions?.filter((t: Transaction) => t.type === 'savings')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0) || 0;
-  const balance = totalIncome - totalExpense - totalSavings;
+  const summary = calculateFinancialSummary(filteredTransactions ?? []);
+  const totalIncome = summary.income;
+  const totalExpense = summary.expenses;
+  const totalSavings = summary.savings;
+  const balance = summary.balance;
 
   // Export to CSV
   const exportToCSV = () => {
@@ -202,13 +199,7 @@ export function TransactionsTable() {
     
     setIsDeletingAll(true);
     try {
-      for (const transaction of filteredTransactions) {
-        await deleteMutation.mutateAsync(transaction.id);
-      }
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['summary'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      await bulkDeleteMutation.mutateAsync(filteredTransactions.map((transaction) => transaction.id));
       setSelectedIds(new Set());
     } catch (error) {
       console.error('Error deleting transactions:', error);
@@ -223,13 +214,7 @@ export function TransactionsTable() {
     
     setIsDeletingSelected(true);
     try {
-      for (const id of selectedIds) {
-        await deleteMutation.mutateAsync(id);
-      }
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['summary'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      await bulkDeleteMutation.mutateAsync([...selectedIds]);
       setSelectedIds(new Set());
     } catch (error) {
       console.error('Error deleting transactions:', error);

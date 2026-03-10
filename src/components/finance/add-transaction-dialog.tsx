@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -83,41 +83,54 @@ interface AddTransactionDialogProps {
   onClose?: () => void;
 }
 
+const getDefaultFormValues = (): FormData => ({
+  type: 'expense',
+  amount: 0,
+  description: '',
+  categoryId: '',
+  date: new Date(),
+  notes: '',
+});
+
+const getEditFormValues = (transaction: Transaction): FormData => ({
+  type: transaction.type as TransactionType,
+  amount: transaction.amount,
+  description: transaction.description,
+  categoryId: transaction.categoryId,
+  date: new Date(transaction.date),
+  notes: transaction.notes || '',
+});
+
 export function AddTransactionDialog({ editTransaction, onClose }: AddTransactionDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<TransactionType>('expense');
-  const [amountDisplay, setAmountDisplay] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
   const { data: categories } = useCategories();
   const createMutation = useCreateTransaction();
   const updateMutation = useUpdateTransaction();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      type: 'expense',
-      amount: 0,
-      description: '',
-      categoryId: '',
-      date: new Date(),
-      notes: '',
-    },
+    defaultValues: getDefaultFormValues(),
   });
+  const watchedAmount = useWatch({ control: form.control, name: 'amount' });
+  const watchedCategoryId = useWatch({ control: form.control, name: 'categoryId' });
+  const watchedDate = useWatch({ control: form.control, name: 'date' });
+  const watchedDescription = useWatch({ control: form.control, name: 'description' });
+  const watchedType = useWatch({ control: form.control, name: 'type' });
 
   useEffect(() => {
     if (editTransaction) {
-      form.reset({
-        type: editTransaction.type as TransactionType,
-        amount: editTransaction.amount,
-        description: editTransaction.description,
-        categoryId: editTransaction.categoryId,
-        date: new Date(editTransaction.date),
-        notes: editTransaction.notes || '',
-      });
-      setSelectedType(editTransaction.type as TransactionType);
-      setAmountDisplay(editTransaction.amount.toLocaleString('id-ID'));
-      setOpen(true);
+      form.reset(getEditFormValues(editTransaction));
+      return;
     }
-  }, [editTransaction, form]);
+    if (!createOpen) {
+      form.reset(getDefaultFormValues());
+    }
+  }, [createOpen, editTransaction, form]);
+
+  const selectedType = watchedType ?? 'expense';
+  const amountDisplay = watchedAmount ? watchedAmount.toLocaleString('id-ID') : '';
+  const isEditing = Boolean(editTransaction);
+  const open = isEditing || createOpen;
 
   const filteredCategories = categories?.filter(c => c.type === selectedType) || [];
 
@@ -127,17 +140,12 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
     const numericValue = value.replace(/[^\d]/g, '');
     
     if (!numericValue || numericValue === '0') {
-      setAmountDisplay('');
       form.setValue('amount', 0);
       return;
     }
 
     // Remove leading zeros
     const cleanValue = numericValue.replace(/^0+/, '');
-    
-    // Format with thousand separators
-    const formatted = Number(cleanValue).toLocaleString('id-ID');
-    setAmountDisplay(formatted);
     
     // Set the actual numeric value
     form.setValue('amount', Number(cleanValue));
@@ -158,10 +166,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
         { id: editTransaction.id, ...transactionData },
         {
           onSuccess: () => {
-            form.reset();
-            setAmountDisplay('');
-            setSelectedType('expense');
-            setOpen(false);
+            form.reset(getDefaultFormValues());
             onClose?.();
           },
         }
@@ -169,10 +174,8 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
     } else {
       createMutation.mutate(transactionData, {
         onSuccess: () => {
-          form.reset();
-          setAmountDisplay('');
-          setSelectedType('expense');
-          setOpen(false);
+          form.reset(getDefaultFormValues());
+          setCreateOpen(false);
         },
       });
     }
@@ -180,16 +183,30 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
 
   const handleTypeChange = (type: string) => {
     if (type === 'income' || type === 'expense' || type === 'savings') {
-      setSelectedType(type);
       form.setValue('type', type);
       form.setValue('categoryId', '');
+    }
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isEditing) {
+      if (!nextOpen) {
+        onClose?.();
+      }
+      return;
+    }
+
+    setCreateOpen(nextOpen);
+
+    if (!nextOpen) {
+      form.reset(getDefaultFormValues());
     }
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-105"
@@ -303,7 +320,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
               <AnimatePresence mode="popLayout">
                 {filteredCategories.map((category) => {
                   const IconComponent = iconMap[category.icon] || MoreHorizontal;
-                  const isSelected = form.watch('categoryId') === category.id;
+                  const isSelected = watchedCategoryId === category.id;
                   
                   return (
                     <motion.button
@@ -359,12 +376,12 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal h-11 transition-all duration-200 hover:bg-muted/50",
-                    !form.watch('date') && "text-muted-foreground"
+                    !watchedDate && "text-muted-foreground"
                   )}
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  {form.watch('date') ? (
-                    format(form.watch('date'), 'EEEE, d MMMM yyyy', { locale: id })
+                  {watchedDate ? (
+                    format(watchedDate, 'EEEE, d MMMM yyyy', { locale: id })
                   ) : (
                     <span>Pilih tanggal</span>
                   )}
@@ -373,7 +390,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
               <PopoverContent className="w-auto p-0" align="start">
                 <CalendarComponent
                   mode="single"
-                  selected={form.watch('date')}
+                  selected={watchedDate}
                   onSelect={(date) => date && form.setValue('date', date)}
                   initialFocus
                 />
@@ -399,7 +416,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
               variant="outline"
               size="sm"
               className="flex-1 h-10"
-              onClick={() => setOpen(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isLoading}
             >
               Batal
@@ -407,7 +424,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
             <Button
               type="submit"
               size="sm"
-              disabled={isLoading || !form.watch('amount') || !form.watch('categoryId') || !form.watch('description')}
+              disabled={isLoading || !watchedAmount || !watchedCategoryId || !watchedDescription}
               className={cn(
                 "flex-1 h-10 text-white shadow-lg transition-all duration-300 hover:scale-[1.02]",
                 selectedType === 'income' 

@@ -25,6 +25,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  categories   Category[]
+  budgets      Budget[]
   transactions Transaction[]
   settings     UserSettings?
 }
@@ -53,10 +55,12 @@ model Category {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   budgets      Budget[]
 
-  @@index([type])
+  @@index([userId, type])
 }
 
 // Transaction model for income, expense, and savings records
@@ -72,13 +76,12 @@ model Transaction {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([type])
-  @@index([date])
   @@index([categoryId])
-  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, type, date])
 }
 
 // Budget model for tracking monthly budgets per category
@@ -93,6 +96,9 @@ model Budget {
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([categoryId, month, year])
+  @@unique([userId, categoryId, month, year])
+  @@index([userId, month, year])
 }

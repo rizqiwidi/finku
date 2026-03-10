@@ -32,9 +32,10 @@ export interface Budget {
 }
 
 export interface FinancialSummary {
-  totalBalance: number;
-  totalIncome: number;
-  totalExpenses: number;
+  balance: number;
+  income: number;
+  expenses: number;
+  savings: number;
   savingsRate: number;
 }
 

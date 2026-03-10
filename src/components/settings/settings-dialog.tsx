@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 export function SettingsDialog() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState(user?.name || '');
@@ -37,13 +37,15 @@ export function SettingsDialog() {
     
     setSaving(true);
     try {
-      const response = await fetch(`/api/users/${user.id}`, {
+      const response = await fetch('/api/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email }),
       });
       
       if (response.ok) {
+        const data = await response.json();
+        updateUser(data.user);
         toast({
           title: 'Berhasil',
           description: 'Profil berhasil diperbarui',

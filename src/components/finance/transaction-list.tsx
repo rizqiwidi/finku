@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useTransactions, useDeleteTransaction } from '@/hooks/use-api';
+import { useTransactions, useDeleteTransaction, useDeleteTransactionsBulk } from '@/hooks/use-api';
 import { formatCurrency, formatRelativeDate, cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
 import { 
@@ -60,7 +60,6 @@ import {
   Coffee,
   PiggyBank,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Wallet,
@@ -93,7 +92,7 @@ interface TransactionListProps {
 export function TransactionList({ month, year, onEdit }: TransactionListProps) {
   const { data: transactions, isLoading } = useTransactions(month, year);
   const deleteMutation = useDeleteTransaction();
-  const queryClient = useQueryClient();
+  const bulkDeleteMutation = useDeleteTransactionsBulk();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
 
@@ -123,13 +122,7 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
     
     setIsDeletingSelected(true);
     try {
-      for (const id of selectedIds) {
-        await deleteMutation.mutateAsync(id);
-      }
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['summary'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      await bulkDeleteMutation.mutateAsync([...selectedIds]);
       setSelectedIds(new Set());
     } catch (error) {
       console.error('Error deleting transactions:', error);

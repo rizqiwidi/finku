@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
+    const user = await requireAuthUser();
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
@@ -11,10 +13,13 @@ export async function GET(request: Request) {
 
     // Build filter conditions
     const where: {
+      userId: string;
       type?: string;
       categoryId?: string;
       date?: { gte: Date; lte: Date };
-    } = {};
+    } = {
+      userId: user.id,
+    };
 
     if (type) {
       where.type = type;
@@ -45,6 +50,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json(transactions);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching transactions:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transactions' },
@@ -55,12 +67,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireAuthUser();
     const body = await request.json();
     const { amount, description, categoryId, type, date, notes } = body;
 
     // Get category to ensure type matches
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
+    const category = await prisma.category.findFirst({
+      where: {
+        id: categoryId,
+        userId: user.id,
+      },
     });
 
     if (!category) {
@@ -78,6 +94,7 @@ export async function POST(request: Request) {
         type: type || category.type,
         date: new Date(date),
         notes: notes || null,
+        userId: user.id,
       },
       include: {
         category: true,
@@ -86,6 +103,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error creating transaction:', error);
     return NextResponse.json(
       { error: 'Failed to create transaction' },

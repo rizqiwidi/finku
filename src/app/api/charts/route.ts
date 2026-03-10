@@ -1,87 +1,116 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 
 export async function GET(request: Request) {
   try {
+    const user = await requireAuthUser();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'monthly', 'category', 'trend'
     const month = searchParams.get('month');
     const year = searchParams.get('year');
 
     if (type === 'monthly' || type === 'trend') {
-      // Get last 6 months data
       const now = new Date();
-      const monthlyData: { month: string; income: number; expenses: number }[] = [];
-
-      for (let i = 5; i >= 0; i--) {
-        const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-        const endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59);
-
-        const transactions = await prisma.transaction.findMany({
-          where: {
-            date: {
-              gte: startDate,
-              lte: endDate,
-            },
+      const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          userId: user.id,
+          date: {
+            gte: rangeStart,
+            lte: rangeEnd,
           },
-        });
+        },
+        select: {
+          amount: true,
+          type: true,
+          date: true,
+        },
+      });
 
-        const income = transactions
-          .filter((t) => t.type === 'income')
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        const expenses = transactions
-          .filter((t) => t.type === 'expense')
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        monthlyData.push({
+      const monthlyData = Array.from({ length: 6 }, (_, index) => {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+        return {
+          key: `${targetDate.getFullYear()}-${targetDate.getMonth()}`,
           month: targetDate.toLocaleDateString('id-ID', { month: 'short' }),
-          income,
-          expenses,
-        });
+          income: 0,
+          expenses: 0,
+        };
+      });
+
+      const monthlyMap = new Map(monthlyData.map((item) => [item.key, item]));
+
+      for (const transaction of transactions) {
+        const transactionDate = new Date(transaction.date);
+        const key = `${transactionDate.getFullYear()}-${transactionDate.getMonth()}`;
+        const bucket = monthlyMap.get(key);
+
+        if (!bucket) {
+          continue;
+        }
+
+        if (transaction.type === 'income') {
+          bucket.income += transaction.amount;
+        }
+
+        if (transaction.type === 'expense') {
+          bucket.expenses += transaction.amount;
+        }
       }
 
-      return NextResponse.json(monthlyData);
+      return NextResponse.json(monthlyData.map(({ key, ...item }) => item));
     }
 
     if (type === 'category') {
-      // Category spending for current month
       const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
       const targetYear = year ? parseInt(year) : new Date().getFullYear();
 
       const startDate = new Date(targetYear, targetMonth - 1, 1);
       const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
 
-      // Get all expense categories
       const categories = await prisma.category.findMany({
-        where: { type: 'expense' },
+        where: {
+          userId: user.id,
+          type: 'expense',
+        },
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
       });
 
-      // Get spending per category
-      const categorySpending = await Promise.all(
-        categories.map(async (category) => {
-          const result = await prisma.transaction.aggregate({
-            where: {
-              categoryId: category.id,
-              type: 'expense',
-              date: {
-                gte: startDate,
-                lte: endDate,
+      const spendGroups =
+        categories.length === 0
+          ? []
+          : await prisma.transaction.groupBy({
+              by: ['categoryId'],
+              where: {
+                userId: user.id,
+                type: 'expense',
+                categoryId: {
+                  in: categories.map((category) => category.id),
+                },
+                date: {
+                  gte: startDate,
+                  lte: endDate,
+                },
               },
-            },
-            _sum: {
-              amount: true,
-            },
-          });
+              _sum: {
+                amount: true,
+              },
+            });
 
-          return {
-            category: category.name,
-            amount: result._sum.amount || 0,
-            color: category.color,
-          };
-        })
+      const spendMap = new Map(
+        spendGroups.map((group) => [group.categoryId, group._sum.amount || 0])
       );
+
+      const categorySpending = categories.map((category) => ({
+        category: category.name,
+        amount: spendMap.get(category.id) || 0,
+        color: category.color,
+      }));
 
       // Calculate total and percentages
       const totalExpenses = categorySpending.reduce((sum, c) => sum + c.amount, 0);
@@ -98,6 +127,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: 'Invalid chart type' }, { status: 400 });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching chart data:', error);
     return NextResponse.json(
       { error: 'Failed to fetch chart data' },

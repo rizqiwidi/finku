@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useTransactions } from '@/hooks/use-api';
+import { useSummary } from '@/hooks/use-api';
 import { formatCurrency } from '@/lib/utils';
 
 const container = {
@@ -27,16 +27,7 @@ interface SummaryCardsProps {
 }
 
 export function SummaryCards({ month, year }: SummaryCardsProps) {
-  const { data: transactions, isLoading } = useTransactions(month, year);
-
-  // Calculate totals from transactions
-  const totalIncome = transactions?.filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0) || 0;
-  const totalExpense = transactions?.filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0) || 0;
-  const totalSavings = transactions?.filter((t) => t.type === 'savings')
-    .reduce((sum, t) => sum + t.amount, 0) || 0;
-  const balance = totalIncome - totalExpense - totalSavings;
+  const { data: summary, isLoading } = useSummary(month, year);
 
   if (isLoading) {
     return (
@@ -62,19 +53,19 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
   const cards = [
     {
       title: 'Saldo Bulan Ini',
-      value: balance,
+      value: summary?.balance ?? 0,
       icon: Wallet,
-      color: balance >= 0 ? 'text-emerald-500' : 'text-red-500',
-      bgGradient: balance >= 0 
+      color: (summary?.balance ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500',
+      bgGradient: (summary?.balance ?? 0) >= 0 
         ? 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/30' 
         : 'bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50 dark:to-rose-950/30',
-      iconBg: balance >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-red-100 dark:bg-red-900/50',
-      trend: balance >= 0 ? 'positive' : 'negative',
+      iconBg: (summary?.balance ?? 0) >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-red-100 dark:bg-red-900/50',
+      trend: (summary?.balance ?? 0) >= 0 ? 'positive' : 'negative',
       description: monthName,
     },
     {
       title: 'Pemasukan',
-      value: totalIncome,
+      value: summary?.income ?? 0,
       icon: TrendingUp,
       color: 'text-emerald-500',
       bgGradient: 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/50 dark:to-green-950/30',
@@ -84,7 +75,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
     },
     {
       title: 'Pengeluaran',
-      value: totalExpense,
+      value: summary?.expenses ?? 0,
       icon: TrendingDown,
       color: 'text-rose-500',
       bgGradient: 'bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/50 dark:to-red-950/30',
@@ -94,7 +85,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
     },
     {
       title: 'Total Tabungan',
-      value: totalSavings,
+      value: summary?.savings ?? 0,
       icon: PiggyBank,
       color: 'text-amber-500',
       bgGradient: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/30',

@@ -123,6 +123,16 @@
   }
 }
 
+@layer utilities {
+  .budget-allocation-panel {
+    @apply rounded-xl border border-border bg-card/95 text-card-foreground shadow-sm;
+  }
+
+  .budget-allocation-muted {
+    @apply rounded-xl border border-border bg-muted/70 text-foreground shadow-sm;
+  }
+}
+
 /* Custom scrollbar for dark mode */
 .dark ::-webkit-scrollbar {
   width: 8px;

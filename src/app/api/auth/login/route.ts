@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
-import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-);
+import prisma from '@/lib/db';
+import { AUTH_COOKIE_NAME, createAuthToken } from '@/lib/auth-server';
+import { isPasswordHash } from '@/lib/user-service';
 
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
+    const normalizedUsername = typeof username === 'string' ? username.trim() : '';
 
-    if (!username || !password) {
+    if (!normalizedUsername || !password) {
       return NextResponse.json(
         { error: 'Username dan password harus diisi' },
         { status: 400 }
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { username },
+      where: { username: normalizedUsername },
     });
 
     if (!user) {
@@ -31,18 +29,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if password is hashed (bcrypt hashes start with $2a$ or $2b$)
-    const isHashed = user.password.startsWith('$2');
-    
-    let passwordMatch: boolean;
-    
-    if (isHashed) {
-      // Compare with bcrypt
-      passwordMatch = await bcrypt.compare(password, user.password);
-    } else {
-      // Plain text comparison (for backward compatibility)
-      passwordMatch = user.password === password;
+    if (!isPasswordHash(user.password)) {
+      console.error(`User ${user.username} still has a plaintext password. Run scripts/migrate-password-hash.ts.`);
+      return NextResponse.json(
+        { error: 'Akun belum siap login. Hubungi admin untuk migrasi password.' },
+        { status: 503 }
+      );
     }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
       return NextResponse.json(
@@ -51,20 +46,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create JWT token
-    const token = await new SignJWT({
-      userId: user.id,
-      username: user.username,
-      role: user.role,
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('7d')
-      .sign(JWT_SECRET);
+    const token = await createAuthToken(user);
 
-    // Set cookie
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
+    cookieStore.set(AUTH_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

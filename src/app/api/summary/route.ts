@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { calculateFinancialSummary } from '@/lib/finance-summary';
 
 export async function GET(request: Request) {
   try {
+    const user = await requireAuthUser();
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
@@ -16,34 +19,33 @@ export async function GET(request: Request) {
     // Get all transactions for the month
     const transactions = await prisma.transaction.findMany({
       where: {
+        userId: user.id,
         date: {
           gte: startDate,
           lte: endDate,
         },
       },
+      select: {
+        amount: true,
+        type: true,
+      },
     });
 
-    // Calculate totals
-    const totalIncome = transactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const totalExpenses = transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const balance = totalIncome - totalExpenses;
-    const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
+    const summary = calculateFinancialSummary(transactions);
 
     return NextResponse.json({
-      balance,
-      income: totalIncome,
-      expenses: totalExpenses,
-      savingsRate,
+      ...summary,
       month: targetMonth,
       year: targetYear,
     });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching summary:', error);
     return NextResponse.json(
       { error: 'Failed to fetch summary' },

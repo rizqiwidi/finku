@@ -1,201 +1,130 @@
-# 💰 Finku - Personal Finance Management
+# Finku
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css)
-![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma)
+Finku is a personal finance app built with Next.js, Prisma, and Supabase.
 
-A modern personal finance management application built with Next.js 16, featuring transaction tracking, budget management, and beautiful visualizations.
+Current architecture:
 
----
+- 1 shared Supabase Postgres database
+- private data isolation by `userId`
+- JWT cookie auth for private API routes
+- no default admin credentials committed in code or SQL
 
-## ✨ Features
+## Stack
 
-### 📊 Dashboard
-- Real-time financial overview (balance, income, expenses, savings)
-- Interactive charts for 6-month financial trends
-- Budget progress tracking with visual indicators
+- Next.js 16
+- React 19
+- TypeScript 5
+- Prisma
+- Supabase Postgres
+- Tailwind CSS
+- TanStack Query
 
-### 💳 Transaction Management
-- Add, edit, and delete transactions
-- Bulk delete functionality
-- Category-based organization with custom icons and colors
-- Excel/CSV import with data preview
+## Local setup
 
-### 💰 Budget Planning
-- Monthly budget allocation per category
-- Visual progress bars with percentage tracking
-- Automatic overspending alerts
-
-### 📈 Analytics
-- Monthly trend charts
-- Category-wise expense breakdown
-- Savings progress visualization
-
-### 🎨 User Experience
-- Light/Dark theme support
-- Fully responsive design
-- Smooth animations with Framer Motion
-- Real-time data updates
-
-### 👤 Admin Features
-- User management dashboard
-- Role-based access control
-
----
-
-## 🛠️ Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS 4 + shadcn/ui |
-| Database | PostgreSQL (Supabase) / SQLite |
-| ORM | Prisma |
-| State | Zustand + TanStack Query |
-| Auth | Custom JWT (jose) |
-| Animation | Framer Motion |
-| Charts | Recharts |
-
----
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js 20+ or Bun
-- PostgreSQL database (Supabase recommended) or SQLite for development
-
-### Quick Start
+1. Install dependencies.
 
 ```bash
-# Clone the repository
-git clone https://github.com/rizqiwidi/finku.git
-cd finku
-
-# Install dependencies
 bun install
-# or
-npm install
+```
 
-# Setup environment variables
+2. Copy env template and fill the required values.
+
+```bash
 cp .env.example .env
+```
 
-# Generate Prisma client and push schema
+Required env vars:
+
+- `DATABASE_URL`
+- `DIRECT_DATABASE_URL`
+- `JWT_SECRET`
+
+`JWT_SECRET` must be a random string with at least 32 characters. Placeholder values are rejected at runtime.
+
+3. Generate Prisma client and push schema.
+
+```bash
 bun run db:generate
 bun run db:push
+```
 
-# (Optional) Seed database with sample data
+4. Bootstrap the first admin account safely with env vars.
+
+```bash
+$env:ADMIN_BOOTSTRAP_USERNAME="admin"
+$env:ADMIN_BOOTSTRAP_PASSWORD="replace-with-a-strong-password"
+$env:ADMIN_BOOTSTRAP_NAME="Administrator"
+$env:ADMIN_BOOTSTRAP_EMAIL="admin@example.com"
+bun run admin:bootstrap
+```
+
+5. Optional: seed demo transactions for the bootstrap admin.
+
+```bash
+$env:SEED_SAMPLE_DATA="true"
 bun run db:seed
+```
 
-# Start development server
+6. Start the app.
+
+```bash
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+## Security and data isolation
 
----
+- `Transaction`, `Category`, `Budget`, and `UserSettings` are scoped to one user.
+- Private API routes resolve the authenticated user from the auth cookie and filter by `userId`.
+- Detail routes perform ownership checks before read, update, or delete.
+- Passwords are stored as bcrypt hashes only.
+- Existing plaintext passwords can be migrated with a dedicated script.
+- Official financial summary formula:
+  `balance = income - expenses - savings`
+- Official savings rate formula:
+  `savingsRate = savings / income * 100`
 
-## ⚙️ Environment Variables
+## Import format
 
-Create a `.env` file in the root directory:
+- Batch import now accepts `.csv` only.
+- File size is limited to 5MB.
+- Each import is capped at 1000 rows.
+- Import rejects dangerous spreadsheet formula prefixes and invalid dates/amounts.
 
-```env
-# Database
-DATABASE_URL="postgresql://user:password@host:5432/database"
-DIRECT_DATABASE_URL="postgresql://user:password@host:5432/database"
+## Scripts
 
-# For SQLite (development)
-# DATABASE_URL="file:./db/custom.db"
-
-# JWT Secret
-JWT_SECRET="your-secret-key-here"
+```bash
+bun run dev
+bun run build
+bun run lint
+bun run test
+bun run db:generate
+bun run db:push
+bun run db:seed
+bun run admin:bootstrap
+bun run passwords:migrate
 ```
 
----
+## Supabase bootstrap
 
-## 🚀 Deployment
+For a fresh Supabase database:
 
-### Deploy to Vercel
+1. Apply [`supabase-schema.sql`](./supabase-schema.sql) or run `bun run db:push`.
+2. Set `ADMIN_BOOTSTRAP_*` env vars.
+3. Run `bun run admin:bootstrap`.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/rizqiwidi/finku)
+`supabase-schema.sql` intentionally does not insert any default admin or shared sample data.
 
-1. Push your code to GitHub
-2. Import project to Vercel
-3. Add environment variables
-4. Deploy!
+## Optional feature flags
 
-### Database Setup (Supabase)
+- `ENABLE_ACTIVE_USERS_METRIC=false`
+  disables `/api/users/active` demo output and returns a deterministic response.
 
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Run the SQL schema from `supabase-schema.sql` in SQL Editor
-3. Copy connection strings to environment variables
-4. Redeploy on Vercel
+## Password migration
 
----
+If older environments still contain plaintext passwords, run:
 
-## 📁 Project Structure
-
-```
-finku/
-├── src/
-│   ├── app/                 # Next.js App Router
-│   │   ├── api/            # API routes
-│   │   └── page.tsx        # Main page
-│   ├── components/
-│   │   ├── ui/             # shadcn/ui components
-│   │   ├── auth/           # Authentication
-│   │   ├── finance/        # Finance components
-│   │   └── ...
-│   ├── contexts/           # React contexts
-│   ├── hooks/              # Custom hooks
-│   ├── lib/                # Utilities
-│   └── types/              # TypeScript types
-├── prisma/
-│   ├── schema.prisma       # Database schema
-│   └── seed.ts            # Seed data
-└── public/                 # Static assets
+```bash
+bun run passwords:migrate
 ```
 
----
-
-## 📸 Screenshots
-
-| Dashboard (Light) | Dashboard (Dark) |
-|-------------------|------------------|
-| ![Dashboard Light](https://via.placeholder.com/400x250?text=Dashboard+Light) | ![Dashboard Dark](https://via.placeholder.com/400x250?text=Dashboard+Dark) |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 👨‍💻 Author
-
-**rizqiwidi**
-- GitHub: [@rizqiwidi](https://github.com/rizqiwidi)
-
----
-
-<div align="center">
-
-**[⬆ Back to Top](#-finku---personal-finance-management)**
-
-Made with ❤️ using Next.js
-
-</div>
+After migration, plaintext login fallback is no longer accepted.

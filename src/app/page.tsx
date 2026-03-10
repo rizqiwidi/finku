@@ -247,33 +247,26 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Dashboard Menu Button */}
-                <Button
-                  variant={activeView === 'dashboard' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setActiveView('dashboard')}
-                  className={cn(
-                    "gap-2 hidden sm:flex",
-                    activeView === 'dashboard' 
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25" 
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
-                </Button>
-                
                 {isAdmin && (
                   <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                     Admin
                   </span>
                 )}
-                {(!sidebarOpen || !sidebarOpen) && (
+                {!sidebarOpen && (
                   <div className="hidden lg:flex items-center gap-2">
                     <ThemeToggle />
                     <SettingsDialog />
                   </div>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="gap-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
               </div>
             </div>
           </div>

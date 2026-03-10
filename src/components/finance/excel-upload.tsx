@@ -15,7 +15,8 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateFinanceQueries } from '@/hooks/use-api';
 
 interface ParsedTransaction {
   date: Date;
@@ -23,6 +24,109 @@ interface ParsedTransaction {
   amount: number;
   type: 'income' | 'expense';
   category: string;
+}
+
+const CSV_FILE_PATTERN = /\.csv$/i;
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 1000;
+const DANGEROUS_FORMULA_PREFIX = /^[=+\-@]/;
+
+function isSupportedCsvFile(file: File) {
+  return CSV_FILE_PATTERN.test(file.name);
+}
+
+function parseCsvText(text: string) {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentValue = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const nextCharacter = text[index + 1];
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        currentValue += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (character === ',' && !inQuotes) {
+      currentRow.push(currentValue);
+      currentValue = '';
+      continue;
+    }
+
+    if ((character === '\n' || character === '\r') && !inQuotes) {
+      if (character === '\r' && nextCharacter === '\n') {
+        index += 1;
+      }
+
+      currentRow.push(currentValue);
+      rows.push(currentRow.map((value) => value.trim()));
+      currentRow = [];
+      currentValue = '';
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  if (currentValue.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentValue);
+    rows.push(currentRow.map((value) => value.trim()));
+  }
+
+  return rows.filter((row) => row.some((cell) => cell.length > 0));
+}
+
+function parseDateValue(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const isoDate = new Date(trimmedValue);
+  if (!Number.isNaN(isoDate.getTime())) {
+    return isoDate;
+  }
+
+  const match = trimmedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  const parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function parseAmountValue(value: string) {
+  const digitsOnly = value.replace(/[^\d-]/g, '');
+
+  if (!digitsOnly || digitsOnly === '-') {
+    return null;
+  }
+
+  const amount = Number(digitsOnly);
+  if (!Number.isFinite(amount) || amount === 0) {
+    return null;
+  }
+
+  return Math.abs(amount);
+}
+
+function findColumnIndex(headers: string[], candidates: string[]) {
+  return headers.findIndex((header) => candidates.some((candidate) => header.includes(candidate)));
+}
+
+function isSafeImportText(value: string) {
+  return !DANGEROUS_FORMULA_PREFIX.test(value);
 }
 
 export function ExcelUpload() {
@@ -35,6 +139,7 @@ export function ExcelUpload() {
   const [errors, setErrors] = React.useState<string[]>([]);
   const [dragActive, setDragActive] = React.useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -53,13 +158,13 @@ export function ExcelUpload() {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.name.match(/\.(xlsx|xls|csv)$/i)) {
+      if (isSupportedCsvFile(droppedFile)) {
         setFile(droppedFile);
         parseFile(droppedFile);
       } else {
         toast({
           title: 'Format tidak didukung',
-          description: 'Mohon gunakan file .xlsx, .xls, atau .csv',
+          description: 'Mohon gunakan file .csv yang sesuai template',
           variant: 'destructive',
         });
       }
@@ -80,23 +185,38 @@ export function ExcelUpload() {
     setParsedData([]);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+      if (!isSupportedCsvFile(file)) {
+        setErrors(['Hanya file CSV yang didukung untuk import aman.']);
+        return;
+      }
 
-      // Find header row and map columns
-      const headers = jsonData[0]?.map(h => String(h).toLowerCase()) || [];
-      const dateCol = headers.findIndex(h => h.includes('tanggal') || h.includes('date') || h.includes('tgl'));
-      const descCol = headers.findIndex(h => h.includes('deskripsi') || h.includes('description') || h.includes('keterangan') || h.includes('nama'));
-      const amountCol = headers.findIndex(h => h.includes('jumlah') || h.includes('amount') || h.includes('nominal') || h.includes('nilai'));
-      const typeCol = headers.findIndex(h => h.includes('tipe') || h.includes('type') || h.includes('jenis'));
-      const categoryCol = headers.findIndex(h => h.includes('kategori') || h.includes('category'));
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setErrors(['Ukuran file melebihi 5MB. Pecah file CSV menjadi batch yang lebih kecil.']);
+        return;
+      }
+
+      const csvText = await file.text();
+      const jsonData = parseCsvText(csvText.replace(/^\uFEFF/, ''));
+
+      if (jsonData.length < 2) {
+        setErrors(['File CSV harus berisi header dan minimal satu baris data.']);
+        return;
+      }
+
+      if (jsonData.length - 1 > MAX_IMPORT_ROWS) {
+        setErrors([`Maksimal ${MAX_IMPORT_ROWS} baris transaksi per import.`]);
+        return;
+      }
+
+      const headers = jsonData[0]?.map((header) => String(header).trim().toLowerCase()) || [];
+      const dateCol = findColumnIndex(headers, ['tanggal', 'date', 'tgl']);
+      const descCol = findColumnIndex(headers, ['deskripsi', 'description', 'keterangan', 'nama']);
+      const amountCol = findColumnIndex(headers, ['jumlah', 'amount', 'nominal', 'nilai']);
+      const typeCol = findColumnIndex(headers, ['tipe', 'type', 'jenis']);
+      const categoryCol = findColumnIndex(headers, ['kategori', 'category']);
 
       if (dateCol === -1 || descCol === -1 || amountCol === -1) {
-        setErrors(['File harus memiliki kolom: Tanggal, Deskripsi/Keterangan, dan Jumlah/Nominal']);
-        setUploading(false);
+        setErrors(['CSV harus memiliki kolom: Tanggal, Deskripsi/Keterangan, dan Jumlah/Nominal.']);
         return;
       }
 
@@ -108,35 +228,38 @@ export function ExcelUpload() {
         if (!row || row.length === 0) continue;
 
         try {
-          const dateValue = row[dateCol];
-          let date: Date;
-          
-          if (typeof dateValue === 'number') {
-            // Excel date serial number
-            const parsedDate = XLSX.SSF.parse_date_code(dateValue) as { y: number; m: number; d: number };
-            date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
-          } else {
-            date = new Date(dateValue);
+          const date = parseDateValue(String(row[dateCol] || ''));
+          const description = String(row[descCol] || '').trim();
+          const amount = parseAmountValue(String(row[amountCol] || ''));
+          const rawType = String(row[typeCol] || 'expense').trim().toLowerCase();
+          const category = String(row[categoryCol] || (rawType === 'income' ? 'Gaji' : 'Lainnya')).trim();
+
+          if (!date || date.getFullYear() < 2000 || date.getFullYear() > 2100) {
+            newErrors.push(`Baris ${i + 1}: Tanggal tidak valid`);
+            continue;
           }
 
-          const description = String(row[descCol] || '');
-          
-          // Parse amount - remove currency symbols and thousand separators
-          let amountStr = String(row[amountCol] || '0');
-          amountStr = amountStr.replace(/[Rp\s.,]/g, '');
-          const amount = parseFloat(amountStr) || 0;
+          if (!description || description.length > 120 || !isSafeImportText(description)) {
+            newErrors.push(`Baris ${i + 1}: Deskripsi tidak valid`);
+            continue;
+          }
 
-          if (amount === 0) {
+          if (!amount || amount > 1_000_000_000_000) {
             newErrors.push(`Baris ${i + 1}: Jumlah tidak valid`);
             continue;
           }
 
-          const typeStr = String(row[typeCol] || 'expense').toLowerCase();
-          const type: 'income' | 'expense' = typeStr.includes('pemasukan') || typeStr.includes('income') || typeStr.includes('masuk')
-            ? 'income'
-            : 'expense';
+          const type: 'income' | 'expense' =
+            rawType.includes('pemasukan') || rawType.includes('income') || rawType.includes('masuk')
+              ? 'income'
+              : rawType.includes('expense') || rawType.includes('pengeluaran') || rawType.includes('keluar')
+                ? 'expense'
+                : 'expense';
 
-          const category = String(row[categoryCol] || (type === 'income' ? 'Gaji' : 'Lainnya'));
+          if (!category || category.length > 60 || !isSafeImportText(category)) {
+            newErrors.push(`Baris ${i + 1}: Kategori tidak valid`);
+            continue;
+          }
 
           transactions.push({
             date,
@@ -150,10 +273,14 @@ export function ExcelUpload() {
         }
       }
 
+      if (transactions.length === 0) {
+        newErrors.push('Tidak ada transaksi valid yang bisa diimpor.');
+      }
+
       setParsedData(transactions);
       setErrors(newErrors);
     } catch {
-      setErrors(['Gagal membaca file. Pastikan file adalah format Excel/CSV yang valid.']);
+      setErrors(['Gagal membaca file. Pastikan file CSV valid dan sesuai template.']);
     } finally {
       setUploading(false);
     }
@@ -247,7 +374,7 @@ export function ExcelUpload() {
       setFile(null);
       setParsedData([]);
       setProgress(0);
-      window.location.reload();
+      await invalidateFinanceQueries(queryClient);
     }
   };
 
@@ -267,7 +394,7 @@ export function ExcelUpload() {
           className="gap-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 border-0 shadow-lg shadow-violet-500/25 transition-all duration-300 hover:scale-105"
         >
           <Upload className="w-4 h-4" />
-          Import Excel
+          Import CSV
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden max-h-[90vh] overflow-y-auto bg-background border-border">
@@ -281,9 +408,9 @@ export function ExcelUpload() {
               <FileSpreadsheet className="w-5 h-5 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold text-foreground">Import Transaksi</DialogTitle>
+              <DialogTitle className="text-lg font-bold text-foreground">Import Transaksi CSV</DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm">
-                Upload file Excel atau CSV untuk import batch
+                Upload file CSV tervalidasi untuk import batch
               </DialogDescription>
             </div>
           </motion.div>
@@ -345,11 +472,11 @@ export function ExcelUpload() {
                   atau klik untuk memilih
                 </p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Format: .xlsx, .xls, .csv (maks 5MB)
+                  Format: .csv (maks 5MB, maksimal 1000 baris)
                 </p>
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".csv,text/csv"
                   onChange={handleFileChange}
                   className="hidden"
                   id="excel-upload"
@@ -497,9 +624,9 @@ export function ExcelUpload() {
                   <FileSpreadsheet className="w-5 h-5 text-violet-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground truncate max-w-[200px]">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">Memproses...</p>
-                </div>
+                <p className="text-sm font-medium text-foreground truncate max-w-[200px]">{file.name}</p>
+                <p className="text-xs text-muted-foreground">Memproses...</p>
+              </div>
               </div>
               <Button variant="ghost" size="icon" onClick={resetUpload} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
@@ -567,9 +694,9 @@ export function ExcelUpload() {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="space-y-1">
                   <p className="font-medium text-foreground">Kolom Wajib:</p>
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Check className="w-3 h-3 text-emerald-500" />
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Check className="w-3 h-3 text-emerald-500" />
                       Tanggal / Date / Tgl
                     </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -599,12 +726,12 @@ export function ExcelUpload() {
               
               {/* Date Format Info */}
               <div className="bg-violet-500/10 dark:bg-violet-500/20 rounded-lg p-3 border border-violet-500/20">
-                <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">Format Tanggal yang Diterima:</p>
+                <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">Validasi Import:</p>
                 <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <span className="bg-muted px-2 py-0.5 rounded">DD/MM/YYYY</span>
                   <span className="bg-muted px-2 py-0.5 rounded">YYYY-MM-DD</span>
-                  <span className="bg-muted px-2 py-0.5 rounded">DD-MM-YYYY</span>
-                  <span className="bg-muted px-2 py-0.5 rounded">Format Excel</span>
+                  <span className="bg-muted px-2 py-0.5 rounded">Tanpa formula cell</span>
+                  <span className="bg-muted px-2 py-0.5 rounded">Maks 1000 baris</span>
                 </div>
               </div>
             </motion.div>

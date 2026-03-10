@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuthUser();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
-    const where = type ? { type } : {};
+    const where = type
+      ? { userId: user.id, type }
+      : { userId: user.id };
 
     const categories = await prisma.category.findMany({
       where,
@@ -15,6 +19,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(categories);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching categories:', error);
     return NextResponse.json(
       { error: 'Failed to fetch categories' },
@@ -25,8 +36,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireAuthUser();
     const body = await request.json();
     const { name, icon, color, type, budget } = body;
+    const budgetValue =
+      budget === undefined || budget === null || budget === ''
+        ? null
+        : Number(budget);
 
     const category = await prisma.category.create({
       data: {
@@ -34,17 +50,19 @@ export async function POST(request: Request) {
         icon,
         color,
         type,
-        budget: budget || null,
+        budget: budgetValue,
+        userId: user.id,
       },
     });
 
     // If it's an expense category with a budget, create a budget entry
-    if (type === 'expense' && budget) {
+    if (type === 'expense' && budgetValue !== null) {
       const now = new Date();
       await prisma.budget.create({
         data: {
+          userId: user.id,
           categoryId: category.id,
-          amount: budget,
+          amount: budgetValue,
           period: 'monthly',
           month: now.getMonth() + 1,
           year: now.getFullYear(),
@@ -54,6 +72,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error creating category:', error);
     return NextResponse.json(
       { error: 'Failed to create category' },

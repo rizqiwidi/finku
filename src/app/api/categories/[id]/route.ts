@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthUser();
     const { id } = await params;
     
-    const category = await prisma.category.findUnique({
-      where: { id },
+    const category = await prisma.category.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
       include: {
         _count: {
           select: { transactions: true },
@@ -26,6 +31,13 @@ export async function GET(
 
     return NextResponse.json(category);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error fetching category:', error);
     return NextResponse.json(
       { error: 'Failed to fetch category' },
@@ -39,6 +51,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthUser();
     const { id } = await params;
     const body = await request.json();
     const { name, icon, color, type, budget, allocationPercentage } = body;
@@ -59,6 +72,21 @@ export async function PATCH(
     if (budget !== undefined) updateData.budget = budget;
     if (allocationPercentage !== undefined) updateData.allocationPercentage = allocationPercentage;
 
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
+      );
+    }
+
     const category = await prisma.category.update({
       where: { id },
       data: updateData,
@@ -66,6 +94,13 @@ export async function PATCH(
 
     return NextResponse.json(category);
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error updating category:', error);
     return NextResponse.json(
       { error: 'Failed to update category' },
@@ -79,11 +114,30 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthUser();
     const { id } = await params;
+
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
+      );
+    }
     
     // Check if category has transactions
     const transactionsCount = await prisma.transaction.count({
-      where: { categoryId: id },
+      where: {
+        categoryId: id,
+        userId: user.id,
+      },
     });
 
     if (transactionsCount > 0) {
@@ -93,12 +147,26 @@ export async function DELETE(
       );
     }
 
+    await prisma.budget.deleteMany({
+      where: {
+        categoryId: id,
+        userId: user.id,
+      },
+    });
+
     await prisma.category.delete({
       where: { id },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (isAuthError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     console.error('Error deleting category:', error);
     return NextResponse.json(
       { error: 'Failed to delete category' },
