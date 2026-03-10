@@ -58,7 +58,17 @@ Finku adalah aplikasi web untuk mengelola keuangan pribadi Anda. Dengan Finku, A
 
 ## 📦 Persiapan Sebelum Mulai
 
-### Yang Perlu Diinstall
+### ⚠️ PENTING: Install Semua Tools Terlebih Dahulu!
+
+**Sebelum menjalankan perintah apapun, Anda HARUS menginstall tools berikut.** Jika tidak, Anda akan mendapat error seperti:
+```
+vercel: The term 'vercel' is not recognized...
+bun: The term 'bun' is not recognized...
+```
+
+---
+
+### Yang Perlu Diinstall (Urutannya Penting!)
 
 #### 1. Install Node.js
 Node.js adalah runtime untuk menjalankan JavaScript di komputer Anda.
@@ -68,10 +78,10 @@ Node.js adalah runtime untuk menjalankan JavaScript di komputer Anda.
 2. Download versi **LTS** (Long Term Support)
 3. Jalankan file installer yang sudah di-download
 4. Klik "Next" sampai selesai
-5. Restart komputer
+5. **Restart PowerShell/Command Prompt** (SANGAT PENTING!)
 
 **Cek apakah sudah terinstall:**
-Buka Command Prompt / Terminal, ketik:
+Buka Command Prompt / PowerShell BARU, ketik:
 ```bash
 node --version
 ```
@@ -80,22 +90,38 @@ Jika muncul angka seperti `v20.x.x`, berarti sudah berhasil.
 ---
 
 #### 2. Install Bun (Alternatif Node.js yang lebih cepat)
-**Cara Install:**
+**Cara Install di Windows:**
 
-**Windows (PowerShell):**
-```bash
+1. Buka **PowerShell sebagai Administrator**:
+   - Klik kanan pada Start menu
+   - Pilih "Windows PowerShell (Admin)" atau "Terminal (Admin)"
+
+2. Ketik perintah berikut:
+```powershell
 powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
-**Mac/Linux:**
-```bash
-curl -fsSL https://bun.sh/install | bash
+3. Jika ada error tentang execution policy, jalankan dulu:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
+Lalu ulangi perintah install Bun.
+
+4. **TUTUP dan BUKA ULANG PowerShell** (SANGAT PENTING!)
 
 **Cek instalasi:**
 ```bash
 bun --version
 ```
+
+**Jika masih error "bun not found":**
+- Bun mungkin terinstall tapi belum di PATH
+- Restart komputer Anda
+- Atau gunakan `npm` sebagai alternatif:
+  ```bash
+  npm install   # sebagai ganti bun install
+  npm run dev   # sebagai ganti bun run dev
+  ```
 
 ---
 
@@ -104,8 +130,9 @@ Git adalah alat untuk mengelola versi kode dan upload ke GitHub.
 
 **Cara Install:**
 1. Buka website: https://git-scm.com/downloads
-2. Download untuk sistem operasi Anda (Windows/Mac/Linux)
+2. Download untuk Windows
 3. Jalankan installer, klik "Next" sampai selesai
+4. **Restart PowerShell**
 
 **Cek instalasi:**
 ```bash
@@ -114,21 +141,51 @@ git --version
 
 ---
 
-#### 4. Install VS Code (Code Editor)
+#### 4. Install Vercel CLI
+Vercel CLI diperlukan untuk deploy dari terminal.
+
+**Cara Install:**
+```bash
+npm install -g vercel
+```
+
+**Cek instalasi:**
+```bash
+vercel --version
+```
+
+---
+
+#### 5. Install VS Code (Code Editor)
 **Cara Install:**
 1. Buka website: https://code.visualstudio.com
-2. Download untuk sistem operasi Anda
+2. Download untuk Windows
 3. Jalankan installer
 
 ---
 
-#### 5. Buat Akun GitHub
+#### 6. Buat Akun GitHub
 GitHub adalah tempat menyimpan kode online.
 
 1. Buka website: https://github.com
 2. Klik "Sign Up"
 3. Isi username, email, password
 4. Verifikasi email
+
+---
+
+### ✅ Checklist Sebelum Mulai
+
+Pastikan semua perintah berikut berhasil di PowerShell:
+
+| Perintah | Expected Output | Status |
+|----------|-----------------|--------|
+| `node --version` | v20.x.x atau lebih baru | ☐ |
+| `bun --version` | 1.x.x atau lebih baru | ☐ |
+| `git --version` | git version 2.x.x | ☐ |
+| `vercel --version` | Vercel CLI x.x.x | ☐ |
+
+**Jika ada yang error, jangan lanjut dulu! Install tools yang missing.**
 
 ---
 
@@ -403,7 +460,13 @@ Klik **"Add"** untuk setiap variable.
 
 SQLite tidak cocok untuk production. Gunakan PostgreSQL dari Supabase.
 
-### Langkah 1: Buat Akun Supabase
+### 🎯 Cara MUDAH: Setup via Supabase Dashboard (Tanpa CLI!)
+
+Ini adalah cara paling mudah - **tidak perlu install apapun!**
+
+---
+
+### Langkah 1: Buat Project di Supabase
 
 1. Buka website: https://supabase.com
 2. Klik **"Start your project"**
@@ -419,41 +482,45 @@ SQLite tidak cocok untuk production. Gunakan PostgreSQL dari Supabase.
 
 ---
 
-### Langkah 2: Ambil Connection String
+### Langkah 2: Buat Tabel dengan SQL Editor
 
-1. Di dashboard Supabase, klik **"Project Settings"** (icon gear)
+1. Di dashboard Supabase, klik **"SQL Editor"** di menu kiri
+2. Klik **"New query"**
+3. Buka file `supabase-schema.sql` dari folder project ini
+4. Copy SEMUA isi file tersebut
+5. Paste ke SQL Editor di Supabase
+6. Klik **"Run"** (tombol di kanan bawah)
+7. Jika berhasil, akan muncul pesan "Success. No rows returned"
+
+Ini akan membuat:
+- 5 tabel (User, UserSettings, Category, Transaction, Budget)
+- Indexes untuk performa
+- User admin default (username: `admin`, password: `94621732`)
+- Kategori-kategori transaksi default
+
+---
+
+### Langkah 3: Ambil Connection String
+
+1. Di dashboard Supabase, klik **"Project Settings"** (icon gear) di kiri bawah
 2. Klik **"Database"** di menu kiri
 3. Scroll ke bagian **"Connection string"**
-4. Copy dua URL berikut:
+4. Pilih tab **"URI"**
+5. Copy dua URL berikut:
 
 **Untuk `DATABASE_URL` (Connection Pooling):**
-- Pilih tab **"URI"**
-- Copy URL dengan port `6543`
-- Ganti `[YOUR-PASSWORD]` dengan password database Anda
+- Gunakan URL dengan port `6543`
+- Ganti `[YOUR-PASSWORD]` dengan password database yang Anda buat
 
 **Untuk `DIRECT_DATABASE_URL` (Direct Connection):**
-- Copy URL dengan port `5432`
-- Ganti `[YOUR-PASSWORD]` dengan password database Anda
+- Gunakan URL dengan port `5432`
+- Ganti `[YOUR-PASSWORD]` dengan password database yang Anda buat
 
 Contoh:
 ```
 DATABASE_URL=postgresql://postgres.xxxx:PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
 DIRECT_DATABASE_URL=postgresql://postgres.xxxx:PASSWORD@db.xxxx.supabase.co:5432/postgres
 ```
-
----
-
-### Langkah 3: Update Environment Variables di Vercel
-
-1. Buka dashboard Vercel project Anda
-2. Klik **"Settings"** > **"Environment Variables"**
-3. Update/hapus variable lama, tambahkan yang baru:
-
-| Name | Value |
-|------|-------|
-| `DATABASE_URL` | URL dari Supabase (port 6543) |
-| `DIRECT_DATABASE_URL` | URL dari Supabase (port 5432) |
-| `JWT_SECRET` | Generate baru dengan: `openssl rand -base64 32` |
 
 ---
 
@@ -469,37 +536,62 @@ datasource db {
 }
 ```
 
+> **Atau rename file `prisma/schema.postgresql.prisma` menjadi `prisma/schema.prisma`**
+
 ---
 
-### Langkah 5: Push Schema ke Database
+### Langkah 5: Set Environment Variables di Vercel
 
-Di Terminal lokal:
+1. Buka dashboard Vercel project Anda
+2. Klik **"Settings"** > **"Environment Variables"**
+3. Tambahkan 3 variables:
 
-```bash
-# Install Vercel CLI
-npm i -g vercel
+| Name | Value |
+|------|-------|
+| `DATABASE_URL` | URL dari Supabase (port 6543) |
+| `DIRECT_DATABASE_URL` | URL dari Supabase (port 5432) |
+| `JWT_SECRET` | String random, contoh: `finku-super-secret-jwt-key-2024` |
 
-# Login ke Vercel
-vercel login
-
-# Pull environment variables
-vercel env pull .env.local
-
-# Push schema ke Supabase
-bun run db:push
-
-# Seed data
-bun run db:seed
-```
+4. Klik **"Save"**
 
 ---
 
 ### Langkah 6: Redeploy di Vercel
 
-1. Buka dashboard Vercel
-2. Klik **"Deployments"**
-3. Klik titik tiga **"..."** di deployment terbaru
-4. Pilih **"Redeploy"**
+1. Buka tab **"Deployments"**
+2. Klik titik tiga **"..."** di deployment terbaru
+3. Pilih **"Redeploy"**
+
+---
+
+## 🔧 Cara CLI: Setup via Terminal (Untuk Pengguna Lanjutan)
+
+Jika Anda sudah familiar dengan terminal, gunakan cara ini:
+
+### Langkah 1: Install Vercel CLI
+```bash
+npm install -g vercel
+```
+
+### Langkah 2: Login dan Pull Environment
+```bash
+vercel login
+vercel env pull .env.local
+```
+
+### Langkah 3: Push Schema ke Database
+```bash
+bun run db:push
+# atau
+npm run db:push
+```
+
+### Langkah 4: Seed Data (Opsional)
+```bash
+bun run db:seed
+# atau
+npm run db:seed
+```
 
 ---
 
