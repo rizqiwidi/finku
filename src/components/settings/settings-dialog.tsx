@@ -136,12 +136,12 @@ export function SettingsDialog() {
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[460px] bg-background border-border">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden border-border bg-background p-0 sm:max-w-[520px]">
+        <DialogHeader className="shrink-0 border-b border-border bg-background px-6 py-5">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 pr-8"
           >
             <div className="p-2 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl">
               <Settings className="w-5 h-5 text-white" />
@@ -155,7 +155,8 @@ export function SettingsDialog() {
           </motion.div>
         </DialogHeader>
 
-        <div className="space-y-5 mt-4">
+        <div className="overflow-y-auto px-6 py-5">
+          <div className="space-y-5">
           {/* Profile Section */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -274,6 +275,7 @@ export function SettingsDialog() {
               <LogOut className="w-4 h-4 mr-2" />
               Keluar dari Akun
             </Button>
+          </div>
           </div>
         </div>
       </DialogContent>

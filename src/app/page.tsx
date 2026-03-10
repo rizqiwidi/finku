@@ -59,11 +59,16 @@ export default function Home() {
   // Show loading state with timeout
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-emerald-50 via-background to-teal-50 dark:from-emerald-950/20 dark:via-background dark:to-teal-950/20 gap-4">
-        <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
+      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_42%),radial-gradient(circle_at_top_right,rgba(45,212,191,0.18),transparent_38%),linear-gradient(135deg,#f7fbf8_0%,#eef7f5_35%,#f6faf8_100%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.32),transparent_36%),radial-gradient(circle_at_top_right,rgba(45,212,191,0.24),transparent_34%),radial-gradient(circle_at_bottom,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,#081311_0%,#0f1917_45%,#111f1c_100%)] gap-4">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-[-8rem] top-16 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl dark:bg-emerald-500/20" />
+          <div className="absolute right-[-6rem] top-10 h-64 w-64 rounded-full bg-teal-300/25 blur-3xl dark:bg-cyan-500/15" />
+          <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
+        </div>
+        <div className="relative p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
           <LayoutDashboard className="w-8 h-8 text-white" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="relative flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <span className="text-sm text-muted-foreground">Memuat...</span>
         </div>
@@ -159,7 +164,12 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50/50 via-background to-teal-50/50 dark:from-emerald-950/10 dark:via-background dark:to-teal-950/10">
+    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_42%),radial-gradient(circle_at_top_right,rgba(45,212,191,0.18),transparent_38%),linear-gradient(135deg,#f7fbf8_0%,#eef7f5_35%,#f6faf8_100%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.34),transparent_36%),radial-gradient(circle_at_top_right,rgba(45,212,191,0.24),transparent_34%),radial-gradient(circle_at_bottom,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,#081311_0%,#0f1917_45%,#111f1c_100%)]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[-8rem] top-24 h-80 w-80 rounded-full bg-emerald-300/30 blur-3xl dark:bg-emerald-500/20" />
+        <div className="absolute right-[-7rem] top-20 h-72 w-72 rounded-full bg-teal-200/35 blur-3xl dark:bg-cyan-500/16" />
+        <div className="absolute bottom-[-8rem] left-1/3 h-80 w-80 rounded-full bg-sky-200/25 blur-3xl dark:bg-sky-500/12" />
+      </div>
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
@@ -184,7 +194,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <div className="flex min-h-screen">
+      <div className="relative flex min-h-screen">
         {sidebarOpen && (
           <aside className="hidden w-64 shrink-0 lg:flex">
             <div className="sticky top-0 flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">

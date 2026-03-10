@@ -95,7 +95,7 @@ bun run dev
 
 ## Import format
 
-- Batch import now accepts `.csv` only.
+- Batch import accepts `.csv`, `.xlsx`, and `.xlsm`.
 - File size is limited to 5MB.
 - Each import is capped at 1000 rows.
 - Import rejects dangerous spreadsheet formula prefixes and invalid dates/amounts.

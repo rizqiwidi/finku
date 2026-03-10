@@ -172,6 +172,7 @@ src/app/page.tsx
 - [x] Template data per-user (kategori, budget, transaksi contoh) kini otomatis diprovision untuk bootstrap admin, user baru buatan admin, dan tersedia script backfill untuk user existing.
 - [x] Sidebar desktop dibuat sticky/persistent sampai tombol tutup diklik, teks chart dark mode diperjelas, dan halaman kategori baru ditambahkan sebagai pusat kontrol kategori user.
 - [x] Pengaturan akun kini punya aksi reset data transaksi dan reset alokasi anggaran dengan verifikasi password login di server-side.
+- [x] Dialog settings dan import kini memakai layout header tetap + body scroll, import mendukung CSV/XLSX/XLSM tervalidasi, dan background dashboard/login state diperkuat untuk mode terang maupun gelap.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -202,3 +203,4 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-11: Layout desktop di halaman utama dipecah menjadi sidebar sticky terpisah dari konten utama agar navigasi tetap terlihat saat scroll; drawer mobile dipertahankan terpisah untuk perilaku responsif.
 - 2026-03-11: Daftar icon kategori dipusatkan ke registry valid berbasis `lucide-react`, ditambah halaman kategori baru dengan katalog preset besar agar kategori yang dibuat user aman dipakai di transaksi, budget, dan alokasi tanpa error deploy.
 - 2026-03-11: Settings dialog menambah aksi reset transaksi dan reset alokasi anggaran yang mewajibkan password login aktif sebagai verifikasi sebelum eksekusi server-side.
+- 2026-03-11: Dialog settings/import dirapikan menjadi modal dengan header tetap dan area konten scroll internal; import dibuka kembali untuk file CSV/XLSX/XLSM memakai parser `read-excel-file` agar tetap menghindari dependensi `xlsx` lama, dan background halaman utama diperkuat dengan layer gradient yang lebih terbaca pada light/dark mode.
