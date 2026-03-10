@@ -7,72 +7,14 @@ import {
   TrendingUp, 
   Loader2, 
   Settings2,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Gamepad2,
-  Receipt,
-  Heart,
-  GraduationCap,
-  MoreHorizontal,
-  Home,
-  Zap,
-  Music,
-  Plane,
-  Gift,
-  Coffee,
-  Laptop,
-  Smartphone,
-  Wifi,
-  Droplet,
-  Fuel,
-  Bus,
-  Train,
-  Bike,
-  ShoppingCart,
-  Apple,
-  Pizza,
-  Wine,
-  Cake,
-  Cookie,
-  BookOpen,
-  Pencil,
-  Calculator,
-  Briefcase,
-  Building,
-  CreditCard,
-  Wallet,
-  PiggyBank,
-  Target,
-  Trophy,
-  Medal,
-  Star,
-  Users,
-  Baby,
-  Leaf,
-  Sun,
-  Cloud,
-  Umbrella,
-  Tv,
-  Film,
-  Headphones,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useBudgets } from '@/hooks/use-api';
+import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatCurrency, cn } from '@/lib/utils';
 import { BudgetAllocationDialog } from './budget-allocation-dialog';
-
-// Icon mapping for categories
-const iconMap: { [key: string]: React.ElementType } = {
-  Utensils, Car, ShoppingBag, Gamepad2, Receipt, Heart, GraduationCap, MoreHorizontal,
-  Home, Zap, Music, Plane, Gift, Coffee, Laptop, Smartphone, Wifi, Droplet, Fuel,
-  Bus, Train, Bike, ShoppingCart, Apple, Pizza, Wine, Cake, Cookie,
-  BookOpen, Pencil, Calculator, Briefcase, Building, CreditCard, Wallet,
-  PiggyBank, Target, Trophy, Medal, Star, Users, Baby, Leaf, Sun, Cloud, Umbrella,
-  Tv, Film, Headphones,
-};
 
 interface BudgetProgressProps {
   month: number;
@@ -88,11 +30,6 @@ export function BudgetProgress({ month, year }: BudgetProgressProps) {
   
   const onTrackCount = activeBudgets.filter(b => b.spent <= b.amount).length;
   const totalBudgets = activeBudgets.length;
-
-  // Get icon component for category
-  const getIconComponent = (iconName: string): React.ElementType => {
-    return iconMap[iconName] || MoreHorizontal;
-  };
 
   return (
     <motion.div
@@ -124,7 +61,7 @@ export function BudgetProgress({ month, year }: BudgetProgressProps) {
               const percentage = budget.amount > 0 ? (budget.spent / budget.amount) * 100 : 0;
               const isOverBudget = percentage > 100;
               const isNearLimit = percentage >= 80 && percentage <= 100;
-              const IconComponent = getIconComponent(budget.category.icon);
+              const IconComponent = getCategoryIconComponent(budget.category.icon);
               
               return (
                 <motion.div

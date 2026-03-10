@@ -40,6 +40,7 @@ Required env vars:
 - `JWT_SECRET`
 
 `JWT_SECRET` must be a random string with at least 32 characters. Placeholder values are rejected at runtime.
+For Supabase pooler connections, `DATABASE_URL` should include `?pgbouncer=true&connection_limit=1` to avoid Prisma prepared statement errors.
 
 3. Generate Prisma client and push schema.
 

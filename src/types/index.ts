@@ -8,7 +8,8 @@ export interface Category {
   icon: string;
   color: string;
   type: TransactionType;
-  budget?: number;
+  budget?: number | null;
+  allocationPercentage?: number | null;
 }
 
 export interface Transaction {

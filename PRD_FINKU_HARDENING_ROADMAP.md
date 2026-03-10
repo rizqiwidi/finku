@@ -170,6 +170,8 @@ src/app/page.tsx
 
 ## Post-PRD Follow-up
 - [x] Template data per-user (kategori, budget, transaksi contoh) kini otomatis diprovision untuk bootstrap admin, user baru buatan admin, dan tersedia script backfill untuk user existing.
+- [x] Sidebar desktop dibuat sticky/persistent sampai tombol tutup diklik, teks chart dark mode diperjelas, dan halaman kategori baru ditambahkan sebagai pusat kontrol kategori user.
+- [x] Pengaturan akun kini punya aksi reset data transaksi dan reset alokasi anggaran dengan verifikasi password login di server-side.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -196,3 +198,7 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-10: Dead code lama (`finance-store`, `finance/header`, `finance/footer`) dibersihkan dan dokumentasi setup/env di README serta env examples diselaraskan dengan arsitektur hardening terbaru.
 - 2026-03-10: `supabase-schema.sql` diselaraskan dengan schema Prisma/runtime: `updatedAt` kini auto-update via trigger, relasi delete dibuat eksplisit, dan bootstrap SQL mengasumsikan `id` disuplai Prisma (`cuid`) alih-alih UUID fallback database.
 - 2026-03-10: Provisioning user dipusatkan agar setiap user mendapat template data privat miliknya sendiri (`UserSettings`, kategori default, budget bulan berjalan, dan transaksi contoh); admin bootstrap, create-user oleh admin, dan script backfill kini memakai flow yang sama dengan sifat idempotent/non-destruktif untuk data existing.
+- 2026-03-10: Runtime login issue pada Supabase pooler ditelusuri ke Prisma prepared statement conflict; template env/README diperjelas bahwa `DATABASE_URL` pooler harus memakai `?pgbouncer=true&connection_limit=1`.
+- 2026-03-11: Layout desktop di halaman utama dipecah menjadi sidebar sticky terpisah dari konten utama agar navigasi tetap terlihat saat scroll; drawer mobile dipertahankan terpisah untuk perilaku responsif.
+- 2026-03-11: Daftar icon kategori dipusatkan ke registry valid berbasis `lucide-react`, ditambah halaman kategori baru dengan katalog preset besar agar kategori yang dibuat user aman dipakai di transaksi, budget, dan alokasi tanpa error deploy.
+- 2026-03-11: Settings dialog menambah aksi reset transaksi dan reset alokasi anggaran yang mewajibkan password login aktif sebagai verifikasi sebelum eksekusi server-side.

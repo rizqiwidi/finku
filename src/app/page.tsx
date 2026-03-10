@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
+  LayoutGrid,
   FileText, 
   Users, 
   LogOut,
@@ -23,12 +24,14 @@ import { TransactionsTable } from '@/components/transactions/transactions-table'
 import { SettingsDialog } from '@/components/settings/settings-dialog';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ExcelUpload } from '@/components/finance/excel-upload';
+import { CategorySettingsPage } from '@/components/categories/category-settings-page';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import type { Transaction } from '@/types';
 
-type View = 'dashboard' | 'transactions' | 'admin';
+type View = 'dashboard' | 'transactions' | 'categories' | 'admin';
 
 export default function Home() {
   const { user, isLoading, logout } = useAuth();
@@ -78,113 +81,119 @@ export default function Home() {
   const navItems = [
     { id: 'dashboard' as View, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'transactions' as View, label: 'Riwayat Transaksi', icon: FileText },
+    { id: 'categories' as View, label: 'Pengaturan Kategori', icon: LayoutGrid },
     ...(isAdmin ? [{ id: 'admin' as View, label: 'Kelola User', icon: Users }] : []),
   ];
 
-  return (
-    <div className="min-h-screen flex bg-gradient-to-br from-emerald-50/50 via-background to-teal-50/50 dark:from-emerald-950/10 dark:via-background dark:to-teal-950/10">
-      {/* Sidebar - Fixed position */}
-      <AnimatePresence mode="wait">
-        {(sidebarOpen || mobileMenuOpen) && (
-          <>
-            {/* Mobile overlay */}
-            {mobileMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-                onClick={() => setMobileMenuOpen(false)}
-              />
-            )}
-            
-            <motion.aside
-              initial={{ x: -280, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -280, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className={cn(
-                "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border flex flex-col",
-                "lg:sticky lg:top-0",
-                mobileMenuOpen ? "block" : sidebarOpen ? "block" : "hidden lg:block"
-              )}
+  const renderSidebarContent = () => (
+    <>
+      <div className="p-4 border-b border-sidebar-border shrink-0">
+        <div className="flex items-center gap-3">
+          <motion.div 
+            className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/30"
+            whileHover={{ scale: 1.05 }}
+          >
+            <LayoutDashboard className="w-5 h-5 text-white" />
+          </motion.div>
+          <div>
+            <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              Finku
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {user.name || user.username}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <nav className="p-3 space-y-1">
+          {navItems.map((item, index) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.08 }}
             >
-              {/* Logo */}
-              <div className="p-4 border-b border-sidebar-border">
-                <div className="flex items-center gap-3">
-                  <motion.div 
-                    className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/30"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <LayoutDashboard className="w-5 h-5 text-white" />
-                  </motion.div>
-                  <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
-                      Finku
-                    </h1>
-                    <p className="text-xs text-muted-foreground">
-                      {user.name || user.username}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <Button
+                variant={activeView === item.id ? 'default' : 'ghost'}
+                size="sm"
+                className={cn(
+                  "w-full justify-start gap-2 transition-all duration-200",
+                  activeView === item.id 
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25" 
+                    : "text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent"
+                )}
+                onClick={() => {
+                  setActiveView(item.id);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+                {activeView === item.id && (
+                  <ChevronRight className="w-3 h-3 ml-auto" />
+                )}
+              </Button>
+            </motion.div>
+          ))}
+        </nav>
+      </ScrollArea>
 
-              {/* Navigation */}
-              <nav className="flex-1 p-3 space-y-1">
-                {navItems.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Button
-                      variant={activeView === item.id ? 'default' : 'ghost'}
-                      size="sm"
-                      className={cn(
-                        "w-full justify-start gap-2 transition-all duration-200",
-                        activeView === item.id 
-                          ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25" 
-                          : "text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent"
-                      )}
-                      onClick={() => {
-                        setActiveView(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.label}
-                      {activeView === item.id && (
-                        <ChevronRight className="w-3 h-3 ml-auto" />
-                      )}
-                    </Button>
-                  </motion.div>
-                ))}
-              </nav>
+      <div className="p-3 border-t border-sidebar-border space-y-2 shrink-0">
+        <div className="flex items-center justify-between">
+          <ThemeToggle />
+          <SettingsDialog />
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="w-full text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Keluar
+        </Button>
+      </div>
+    </>
+  );
 
-              {/* Bottom Actions */}
-              <div className="p-3 border-t border-sidebar-border space-y-2">
-                <div className="flex items-center justify-between">
-                  <ThemeToggle />
-                  <SettingsDialog />
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="w-full text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Keluar
-                </Button>
-              </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50/50 via-background to-teal-50/50 dark:from-emerald-950/10 dark:via-background dark:to-teal-950/10">
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 220 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl lg:hidden"
+            >
+              {renderSidebarContent()}
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
+      <div className="flex min-h-screen">
+        {sidebarOpen && (
+          <aside className="hidden w-64 shrink-0 lg:flex">
+            <div className="sticky top-0 flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
+              {renderSidebarContent()}
+            </div>
+          </aside>
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
           <div className="container mx-auto px-4 py-3">
@@ -325,6 +334,17 @@ export default function Home() {
               </motion.div>
             )}
 
+            {activeView === 'categories' && (
+              <motion.div
+                key="categories"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <CategorySettingsPage />
+              </motion.div>
+            )}
+
             {activeView === 'admin' && isAdmin && (
               <motion.div
                 key="admin"
@@ -337,6 +357,7 @@ export default function Home() {
             )}
           </AnimatePresence>
         </main>
+      </div>
       </div>
     </div>
   );

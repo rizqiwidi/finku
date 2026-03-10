@@ -10,18 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
   Calendar, 
-  Wallet, 
-  Laptop, 
   TrendingUp, 
   TrendingDown,
-  Utensils, 
-  Car, 
-  ShoppingBag, 
-  Gamepad2, 
-  Receipt, 
-  Heart, 
-  GraduationCap, 
-  MoreHorizontal,
   PiggyBank,
   Sparkles,
   Loader2
@@ -47,25 +37,10 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@/components/ui/toggle-group';
+import { getCategoryIconComponent } from '@/lib/category-icons';
 import { cn } from '@/lib/utils';
 import { useCategories, useCreateTransaction, useUpdateTransaction } from '@/hooks/use-api';
 import type { Transaction, TransactionType } from '@/types';
-
-const iconMap: { [key: string]: React.ElementType } = {
-  Wallet,
-  Laptop,
-  TrendingUp,
-  Plus,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Gamepad2,
-  Receipt,
-  Heart,
-  GraduationCap,
-  PiggyBank,
-  MoreHorizontal,
-};
 
 const formSchema = z.object({
   type: z.enum(['income', 'expense', 'savings']),
@@ -319,7 +294,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
             <div className="grid grid-cols-4 gap-1.5">
               <AnimatePresence mode="popLayout">
                 {filteredCategories.map((category) => {
-                  const IconComponent = iconMap[category.icon] || MoreHorizontal;
+                  const IconComponent = getCategoryIconComponent(category.icon);
                   const isSelected = watchedCategoryId === category.id;
                   
                   return (

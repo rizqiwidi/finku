@@ -8,45 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { 
-  Utensils, 
-  Car, 
-  ShoppingBag, 
-  Gamepad2, 
-  Receipt, 
-  Heart, 
-  GraduationCap, 
-  MoreHorizontal,
   PiggyBank,
-  Shield,
   TrendingUp,
   Loader2,
   Calculator,
-  Wallet,
   Check,
-  Laptop,
-  Plus,
   Settings2,
 } from 'lucide-react';
+import { getCategoryIconComponent } from '@/lib/category-icons';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
-
-const iconMap: { [key: string]: React.ElementType } = {
-  Wallet,
-  Laptop,
-  TrendingUp,
-  Plus,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Gamepad2,
-  Receipt,
-  Heart,
-  GraduationCap,
-  MoreHorizontal,
-  PiggyBank,
-  Shield,
-};
 
 interface Category {
   id: string;
@@ -404,7 +376,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                 </h4>
                 <div className="space-y-3 max-h-44 overflow-y-auto pr-1">
                   {categories.map((category, index) => {
-                    const IconComponent = iconMap[category.icon] || MoreHorizontal;
+                    const IconComponent = getCategoryIconComponent(category.icon);
                     const allocatedAmount = Math.round(incomeValue * category.allocationPercentage / 100);
                     const maxForThis = getMaxForCategory(category.id, false);
                     
@@ -469,7 +441,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                 </h4>
                 <div className="space-y-3">
                   {savingsCategories.map((category, index) => {
-                    const IconComponent = iconMap[category.icon] || MoreHorizontal;
+                    const IconComponent = getCategoryIconComponent(category.icon);
                     const allocatedAmount = Math.round(incomeValue * category.allocationPercentage / 100);
                     const maxForThis = getMaxForCategory(category.id, true);
                     

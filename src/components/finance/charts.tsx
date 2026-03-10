@@ -33,6 +33,50 @@ interface CustomTooltipProps {
   }>;
 }
 
+interface CustomAreaTooltipProps {
+  active?: boolean;
+  label?: string;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>;
+}
+
+const CustomAreaTooltip = ({ active, label, payload }: CustomAreaTooltipProps) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="min-w-[180px] rounded-xl border border-border bg-card/95 p-4 shadow-2xl backdrop-blur"
+    >
+      <p className="mb-3 text-sm font-semibold text-foreground">{label}</p>
+      <div className="space-y-2">
+        {payload.map((item) => (
+          <div
+            key={item.name}
+            className="flex items-center justify-between gap-6 rounded-lg bg-muted/80 px-3 py-1.5"
+          >
+            <span
+              className="text-xs font-medium"
+              style={{ color: item.color }}
+            >
+              {item.name}
+            </span>
+            <span className="text-sm font-bold text-foreground">
+              {formatCurrency(item.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
 const CustomPieTooltip = ({ active, payload }: CustomTooltipProps) => {
   if (active && payload && payload.length > 0) {
     const data = payload[0].payload;
@@ -108,7 +152,7 @@ export function MonthlyChart() {
     >
       <Card className="border-0 shadow-lg bg-card h-full flex flex-col overflow-hidden">
         <CardHeader className="pb-2 flex-shrink-0">
-          <CardTitle className="text-base font-semibold">Tren Keuangan</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Tren Keuangan</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
           {isLoading ? (
@@ -133,26 +177,18 @@ export function MonthlyChart() {
                   <XAxis 
                     dataKey="month" 
                     className="text-xs"
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
                     axisLine={{ stroke: 'hsl(var(--border))' }}
                   />
                   <YAxis 
                     className="text-xs"
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
                     axisLine={{ stroke: 'hsl(var(--border))' }}
                     tickFormatter={(value) => `${(value / 1000000).toFixed(0)}jt`}
                     width={45}
                   />
                   <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      color: 'hsl(var(--foreground))',
-                    }}
-                    labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                    content={<CustomAreaTooltip />}
                   />
                   <Area
                     type="monotone"
@@ -194,7 +230,7 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
     >
       <Card className="border-0 shadow-lg bg-card h-full flex flex-col overflow-hidden">
         <CardHeader className="pb-2 flex-shrink-0">
-          <CardTitle className="text-base font-semibold">Pengeluaran per Kategori</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Pengeluaran per Kategori</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
           {isLoading ? (

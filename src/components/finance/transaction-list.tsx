@@ -37,51 +37,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useTransactions, useDeleteTransaction, useDeleteTransactionsBulk } from '@/hooks/use-api';
+import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatCurrency, formatRelativeDate, cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
-import { 
-  Utensils, 
-  Car, 
-  ShoppingBag, 
-  Gamepad2, 
-  Receipt as ReceiptIcon, 
-  Heart, 
-  GraduationCap, 
-  MoreHorizontal,
-  Wallet,
-  Laptop,
-  Plus,
-  TrendingUp,
-  Home,
-  Zap,
-  Music,
-  Plane,
-  Gift,
-  Coffee,
-  PiggyBank,
-} from 'lucide-react';
-
-const iconMap: { [key: string]: React.ElementType } = {
-  Wallet,
-  Laptop,
-  TrendingUp,
-  Plus,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Gamepad2,
-  Receipt: ReceiptIcon,
-  Heart,
-  GraduationCap,
-  MoreHorizontal,
-  Home,
-  Zap,
-  Music,
-  Plane,
-  Gift,
-  Coffee,
-  PiggyBank,
-};
 
 interface TransactionListProps {
   month: number;
@@ -220,7 +178,7 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
         <ScrollArea className="h-[400px] px-6">
           <AnimatePresence mode="popLayout">
             {transactions?.map((transaction, index) => {
-              const IconComponent = iconMap[transaction.category.icon] || MoreHorizontal;
+              const IconComponent = getCategoryIconComponent(transaction.category.icon);
               const isIncome = transaction.type === 'income';
               const isSelected = selectedIds.has(transaction.id);
               

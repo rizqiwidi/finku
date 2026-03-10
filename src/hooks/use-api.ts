@@ -42,6 +42,7 @@ interface BudgetProgress {
 
 export function invalidateFinanceQueries(queryClient: QueryClient) {
   return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['categories'] }),
     queryClient.invalidateQueries({ queryKey: ['transactions'] }),
     queryClient.invalidateQueries({ queryKey: ['summary'] }),
     queryClient.invalidateQueries({ queryKey: ['budgets'] }),

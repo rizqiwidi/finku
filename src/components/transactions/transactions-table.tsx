@@ -64,29 +64,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useTransactions, useDeleteTransactionsBulk } from '@/hooks/use-api';
+import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { calculateFinancialSummary } from '@/lib/finance-summary';
-
-const iconMap: { [key: string]: React.ElementType } = {
-  Wallet,
-  Laptop,
-  TrendingUp,
-  Plus,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Gamepad2,
-  Receipt,
-  Heart,
-  GraduationCap,
-  MoreHorizontal,
-  PiggyBank,
-  Shield,
-  Star,
-};
 
 export function TransactionsTable() {
   const today = new Date();
@@ -553,7 +536,7 @@ export function TransactionsTable() {
                 </TableHeader>
                 <TableBody>
                   {filteredTransactions?.map((transaction: Transaction, index: number) => {
-                    const IconComponent = iconMap[transaction.category.icon] || MoreHorizontal;
+                    const IconComponent = getCategoryIconComponent(transaction.category.icon);
                     const isSelected = selectedIds.has(transaction.id);
                     
                     return (
