@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -60,12 +61,13 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.category.deleteMany();
 
-  // Create admin user
+  // Create admin user with hashed password
   console.log('👤 Creating admin user...');
+  const hashedPassword = await bcrypt.hash('94621732', 10);
   const admin = await prisma.user.create({
     data: {
       username: 'admin',
-      password: '94621732', // In production, use hashed password
+      password: hashedPassword,
       name: 'Administrator',
       email: 'admin@finku.id',
       role: 'admin',

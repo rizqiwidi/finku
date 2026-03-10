@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'your-secret-key-change-in-production'
@@ -30,8 +31,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simple password comparison (in production, use bcrypt)
-    if (user.password !== password) {
+    // Check if password is hashed (bcrypt hashes start with $2a$ or $2b$)
+    const isHashed = user.password.startsWith('$2');
+    
+    let passwordMatch: boolean;
+    
+    if (isHashed) {
+      // Compare with bcrypt
+      passwordMatch = await bcrypt.compare(password, user.password);
+    } else {
+      // Plain text comparison (for backward compatibility)
+      passwordMatch = user.password === password;
+    }
+
+    if (!passwordMatch) {
       return NextResponse.json(
         { error: 'Username atau password salah' },
         { status: 401 }

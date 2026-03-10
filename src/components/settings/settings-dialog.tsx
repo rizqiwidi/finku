@@ -70,11 +70,15 @@ export function SettingsDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-muted">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+        >
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[400px] bg-card border-border text-white">
+      <DialogContent className="sm:max-w-[400px] bg-background border-border">
         <DialogHeader>
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -85,8 +89,8 @@ export function SettingsDialog() {
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold">Pengaturan</DialogTitle>
-              <DialogDescription className="text-slate-400">
+              <DialogTitle className="text-lg font-bold text-foreground">Pengaturan</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
                 Kelola pengaturan akun Anda
               </DialogDescription>
             </div>
@@ -96,48 +100,48 @@ export function SettingsDialog() {
         <div className="space-y-4 mt-4">
           {/* Profile Section */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <User className="w-4 h-4" />
               Profil
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-xs text-slate-300">Username</Label>
+              <Label htmlFor="username" className="text-xs text-muted-foreground">Username</Label>
               <Input
                 id="username"
                 value={user?.username || ''}
                 disabled
-                className="bg-muted border-border h-9 text-sm text-slate-400"
+                className="bg-muted border-border h-9 text-sm text-muted-foreground"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs text-slate-300">Nama Lengkap</Label>
+              <Label htmlFor="name" className="text-xs text-muted-foreground">Nama Lengkap</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Masukkan nama lengkap"
-                className="h-9 bg-muted border-border text-white placeholder:text-slate-500 focus:border-emerald-500"
+                className="h-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-emerald-500"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs text-slate-300">Email</Label>
+              <Label htmlFor="email" className="text-xs text-muted-foreground">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Masukkan email"
-                className="h-9 bg-muted border-border text-white placeholder:text-slate-500 focus:border-emerald-500"
+                className="h-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-emerald-500"
               />
             </div>
             
             <Button 
               onClick={handleSaveProfile} 
               disabled={saving}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-9 shadow-lg shadow-emerald-500/25"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-9 shadow-lg shadow-emerald-500/25 text-white"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -151,7 +155,7 @@ export function SettingsDialog() {
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="w-full h-9 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border-rose-500/30"
+              className="w-full h-9 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 border-rose-500/30"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Keluar dari Akun

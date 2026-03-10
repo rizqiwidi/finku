@@ -56,7 +56,7 @@ export default function Home() {
   // Show loading state with timeout
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-emerald-50 via-background to-teal-50 dark:from-emerald-950/20 dark:via-background dark:to-teal-950/20 gap-4">
         <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
           <LayoutDashboard className="w-8 h-8 text-white" />
         </div>
@@ -82,7 +82,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-gradient-to-br from-emerald-50/50 via-background to-teal-50/50 dark:from-emerald-950/10 dark:via-background dark:to-teal-950/10">
       {/* Sidebar - Fixed position */}
       <AnimatePresence mode="wait">
         {(sidebarOpen || mobileMenuOpen) && (
@@ -119,7 +119,7 @@ export default function Home() {
                     <LayoutDashboard className="w-5 h-5 text-white" />
                   </motion.div>
                   <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                    <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
                       Finku
                     </h1>
                     <p className="text-xs text-muted-foreground">
@@ -145,7 +145,7 @@ export default function Home() {
                         "w-full justify-start gap-2 transition-all duration-200",
                         activeView === item.id 
                           ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25" 
-                          : "text-sidebar-foreground hover:text-white hover:bg-sidebar-accent"
+                          : "text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent"
                       )}
                       onClick={() => {
                         setActiveView(item.id);
@@ -172,7 +172,7 @@ export default function Home() {
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  className="w-full text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Keluar
@@ -221,7 +221,7 @@ export default function Home() {
                       <LayoutDashboard className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                      <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
                         Finku
                       </h1>
                       <p className="text-xs text-muted-foreground">
@@ -236,7 +236,7 @@ export default function Home() {
                     <LayoutDashboard className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                    <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
                       Finku
                     </h1>
                     <p className="text-xs text-muted-foreground">
@@ -247,6 +247,22 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Dashboard Menu Button */}
+                <Button
+                  variant={activeView === 'dashboard' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveView('dashboard')}
+                  className={cn(
+                    "gap-2 hidden sm:flex",
+                    activeView === 'dashboard' 
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/25" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
+                
                 {isAdmin && (
                   <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                     Admin

@@ -1,17 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { LayoutDashboard, Sparkles, Loader2, Eye, EyeOff, Wallet, TrendingUp, PiggyBank, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { LayoutDashboard, Loader2, Eye, EyeOff, Wallet, TrendingUp, PiggyBank, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/auth-context';
 
 const features = [
-  { icon: Wallet, text: 'Kelola keuangan dengan mudah', color: 'text-emerald-400' },
-  { icon: TrendingUp, text: 'Pantau tren pengeluaran', color: 'text-teal-400' },
-  { icon: PiggyBank, text: 'Raih target tabungan', color: 'text-amber-400' },
+  { icon: Wallet, text: 'Kelola keuangan dengan mudah', color: 'text-emerald-500' },
+  { icon: TrendingUp, text: 'Pantau tren pengeluaran', color: 'text-teal-500' },
+  { icon: PiggyBank, text: 'Raih target tabungan', color: 'text-amber-500' },
 ];
+
+// Generate random avatar URLs using pravatar.cc (lightweight, no server storage)
+const getRandomAvatar = (seed: number) => 
+  `https://i.pravatar.cc/40?img=${seed}`;
 
 export function LoginForm() {
   const [username, setUsername] = useState('');
@@ -19,7 +23,27 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeUsers, setActiveUsers] = useState(0);
   const { login } = useAuth();
+
+  // Fetch active users count
+  useEffect(() => {
+    const fetchActiveUsers = async () => {
+      try {
+        const response = await fetch('/api/users/active');
+        const data = await response.json();
+        setActiveUsers(data.activeUsers || 1);
+      } catch {
+        setActiveUsers(1);
+      }
+    };
+
+    fetchActiveUsers();
+    
+    // Update every 30 seconds for realtime effect
+    const interval = setInterval(fetchActiveUsers, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,110 +61,116 @@ export function LoginForm() {
     setIsLoading(false);
   };
 
+  // Generate random avatar seeds for display
+  const avatarSeeds = [1, 2, 3, 4, 5];
+
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-background">
+    <div className="h-screen flex relative overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-teal-50 dark:from-emerald-950/20 dark:via-background dark:to-teal-950/20">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-teal-500/20 dark:bg-teal-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/4 right-1/4 w-1/3 h-1/3 bg-amber-500/10 dark:bg-amber-500/5 rounded-full blur-3xl" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-teal-500/10 dark:bg-teal-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 right-1/3 w-1/4 h-1/4 bg-amber-500/5 dark:bg-amber-500/3 rounded-full blur-3xl" />
       </div>
 
       {/* Left side - Features */}
-      <div className="hidden lg:flex flex-col justify-center items-start w-1/2 p-12 relative z-10">
-        <div className="max-w-md">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg">
-              <LayoutDashboard className="w-8 h-8 text-white" />
+      <div className="hidden lg:flex flex-col justify-center items-start w-1/2 p-10 xl:p-14 relative z-10">
+        <div className="max-w-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
+              <LayoutDashboard className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
                 Finku
               </h1>
-              <p className="text-muted-foreground text-sm">Financial Management</p>
+              <p className="text-muted-foreground text-xs">Financial Management</p>
             </div>
           </div>
 
-          <h2 className="text-4xl font-bold text-foreground mb-4 leading-tight">
+          <h2 className="text-3xl xl:text-4xl font-bold text-foreground mb-3 leading-tight">
             Kelola Keuangan<br />
             <span className="bg-gradient-to-r from-emerald-500 to-amber-500 bg-clip-text text-transparent">
               Lebih Cerdas
             </span>
           </h2>
 
-          <p className="text-muted-foreground mb-8 text-lg">
+          <p className="text-muted-foreground mb-6 text-base">
             Platform manajemen keuangan pribadi yang membantu Anda mencapai tujuan finansial.
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {features.map((feature, index) => (
               <div
                 key={index}
                 className="flex items-center gap-3"
               >
-                <div className="p-2.5 bg-muted rounded-xl border border-border">
-                  <feature.icon className={`w-5 h-5 ${feature.color}`} />
+                <div className="p-2 bg-muted/80 rounded-lg border border-border">
+                  <feature.icon className={`w-4 h-4 ${feature.color}`} />
                 </div>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   {feature.text}
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="mt-12 flex items-center gap-4">
+          <div className="mt-8 flex items-center gap-3">
             <div className="flex -space-x-2">
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-10 h-10 rounded-full bg-muted border-2 border-background"
+              {avatarSeeds.slice(0, 4).map((seed) => (
+                <img
+                  key={seed}
+                  src={getRandomAvatar(seed)}
+                  alt="User"
+                  className="w-9 h-9 rounded-full border-2 border-background object-cover bg-muted"
+                  loading="lazy"
                 />
               ))}
             </div>
             <div>
-              <p className="text-foreground font-semibold">2,500+</p>
-              <p className="text-muted-foreground text-sm">Pengguna aktif</p>
+              <p className="text-foreground font-semibold text-sm">{activeUsers.toLocaleString()}+ Pengguna Aktif</p>
+              <p className="text-muted-foreground text-xs">bergabung dalam platform</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Right side - Login Form */}
-      <div className="flex items-center justify-center w-full lg:w-1/2 p-6 relative z-10">
-        <div className="w-full max-w-md">
+      <div className="flex items-center justify-center w-full lg:w-1/2 p-4 sm:p-6 relative z-10">
+        <div className="w-full max-w-sm">
           {/* Mobile logo */}
-          <div className="flex items-center justify-center gap-3 mb-8 lg:hidden">
-            <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg">
-              <LayoutDashboard className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-center gap-2.5 mb-6 lg:hidden">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
+              <LayoutDashboard className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
               Finku
             </h1>
           </div>
 
-          <div className="bg-card rounded-3xl p-8 border border-border shadow-xl">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Selamat Datang!</h2>
-              <p className="text-muted-foreground mb-6">Masuk ke akun Anda untuk melanjutkan</p>
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-6 border border-border shadow-xl">
+            <div className="mb-5">
+              <h2 className="text-xl font-bold text-foreground mb-1">Selamat Datang!</h2>
+              <p className="text-muted-foreground text-sm">Masuk ke akun Anda untuk melanjutkan</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className="text-sm">Username</Label>
                 <Input
                   id="username"
                   type="text"
                   placeholder="Masukkan username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="h-12"
+                  className="h-10"
                   required
                   autoComplete="username"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -148,7 +178,7 @@ export function LoginForm() {
                     placeholder="Masukkan password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pr-12"
+                    className="h-10 pr-10"
                     required
                     autoComplete="current-password"
                   />
@@ -156,53 +186,57 @@ export function LoginForm() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-1 top-1 h-10 w-10"
+                    className="absolute right-0.5 top-0.5 h-9 w-9"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
+                      <EyeOff className="w-4 h-4" />
                     ) : (
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-4 h-4" />
                     )}
                   </Button>
                 </div>
               </div>
 
               {error && (
-                <p className="text-sm text-red-500 text-center bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                <p className="text-xs text-red-500 text-center bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
                   {error}
                 </p>
               )}
 
-              <div>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl shadow-lg transition-all duration-300"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      Masuk
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-10 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-lg shadow-lg shadow-emerald-500/25 transition-all duration-300"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Masuk
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  Demo credentials:
-                </p>
-                <div className="flex items-center gap-2 text-sm font-mono bg-background px-3 py-2 rounded-lg">
-                  <span className="text-emerald-500">admin</span>
-                  <span className="text-muted-foreground">/</span>
-                  <span className="text-amber-500">94621732</span>
+            {/* Mobile only - Active users */}
+            <div className="mt-5 pt-4 border-t border-border lg:hidden">
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex -space-x-1.5">
+                  {avatarSeeds.slice(0, 3).map((seed) => (
+                    <img
+                      key={seed}
+                      src={getRandomAvatar(seed + 10)}
+                      alt="User"
+                      className="w-6 h-6 rounded-full border border-background object-cover bg-muted"
+                      loading="lazy"
+                    />
+                  ))}
                 </div>
+                <span className="text-xs text-muted-foreground">
+                  {activeUsers.toLocaleString()}+ pengguna aktif
+                </span>
               </div>
             </div>
           </div>

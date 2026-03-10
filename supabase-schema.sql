@@ -73,16 +73,16 @@ CREATE TABLE IF NOT EXISTS "Budget" (
 );
 
 -- 8. Insert user admin default
--- Password: 94621732 (plain text - sesuai dengan login system)
+-- Password: 94621732 (bcrypt hash - generated with bcryptjs)
 INSERT INTO "User" (id, username, password, name, email, role)
 VALUES (
   'admin-user-001',
   'admin',
-  '94621732',
+  '$2a$10$EqKcp1WFKVQISheBxmXNGexPR.i7QYXOJC.OFfQDT8iSaHuuPdlrW',
   'Administrator',
   'admin@finku.id',
   'admin'
-) ON CONFLICT (username) DO NOTHING;
+) ON CONFLICT (username) DO UPDATE SET password = '$2a$10$EqKcp1WFKVQISheBxmXNGexPR.i7QYXOJC.OFfQDT8iSaHuuPdlrW';
 
 -- 9. Insert kategori default
 INSERT INTO "Category" (id, name, icon, color, type, budget, "allocationPercentage") VALUES

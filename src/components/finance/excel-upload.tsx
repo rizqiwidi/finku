@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileSpreadsheet, Check, AlertCircle, X, FileText, Table, Loader2, FileDown, Eye, Info } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertCircle, X, FileText, Table, Loader2, FileDown, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -270,8 +270,8 @@ export function ExcelUpload() {
           Import Excel
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="p-5 bg-gradient-to-r from-violet-500/20 to-purple-500/20 border-b sticky top-0 z-10">
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden max-h-[90vh] overflow-y-auto bg-background border-border">
+        <DialogHeader className="p-5 bg-gradient-to-r from-violet-500/10 to-purple-500/10 dark:from-violet-500/20 dark:to-purple-500/20 border-b border-border sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -281,23 +281,23 @@ export function ExcelUpload() {
               <FileSpreadsheet className="w-5 h-5 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold">Import Transaksi</DialogTitle>
-              <DialogDescription className="text-slate-400 text-sm">
+              <DialogTitle className="text-lg font-bold text-foreground">Import Transaksi</DialogTitle>
+              <DialogDescription className="text-muted-foreground text-sm">
                 Upload file Excel atau CSV untuk import batch
               </DialogDescription>
             </div>
           </motion.div>
         </DialogHeader>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 bg-background">
           {errors.length > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 text-red-300">
+              <Alert variant="destructive" className="bg-red-500/10 border-red-500/30">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
+                <AlertDescription className="text-red-600 dark:text-red-400">
                   <ul className="list-disc pl-4 space-y-0.5">
                     {errors.slice(0, 5).map((error, i) => (
                       <li key={i} className="text-xs">{error}</li>
@@ -318,10 +318,10 @@ export function ExcelUpload() {
               onDragOver={handleDrag}
               onDrop={handleDrop}
               className={cn(
-                "relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300",
+                "relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 bg-muted/50",
                 dragActive 
                   ? "border-violet-500 bg-violet-500/10 scale-[1.02]" 
-                  : "border-border hover:border-violet-500/50 bg-muted"
+                  : "border-border hover:border-violet-500/50 hover:bg-muted"
               )}
             >
               <motion.div
@@ -335,16 +335,16 @@ export function ExcelUpload() {
                 )}>
                   <Upload className={cn(
                     "w-7 h-7 transition-colors",
-                    dragActive ? "text-violet-400" : "text-slate-400"
+                    dragActive ? "text-violet-500" : "text-muted-foreground"
                   )} />
                 </div>
-                <p className="text-base font-medium text-white mb-1">
+                <p className="text-base font-medium text-foreground mb-1">
                   {dragActive ? "Lepaskan file di sini" : "Drag & drop file"}
                 </p>
-                <p className="text-sm text-slate-400 mb-3">
+                <p className="text-sm text-muted-foreground mb-3">
                   atau klik untuk memilih
                 </p>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-muted-foreground mb-3">
                   Format: .xlsx, .xls, .csv (maks 5MB)
                 </p>
                 <input
@@ -354,7 +354,7 @@ export function ExcelUpload() {
                   className="hidden"
                   id="excel-upload"
                 />
-                <Button asChild variant="outline" className="border-border text-muted-foreground hover:bg-muted hover:text-foreground">
+                <Button asChild variant="outline" className="border-border text-foreground hover:bg-muted">
                   <label htmlFor="excel-upload" className="cursor-pointer">
                     <FileText className="w-4 h-4 mr-2" />
                     Pilih File
@@ -373,8 +373,8 @@ export function ExcelUpload() {
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="w-14 h-14 mx-auto mb-4 border-4 border-violet-500/30 border-t-violet-500 rounded-full"
               />
-              <p className="text-slate-300 font-medium">Memproses file...</p>
-              <p className="text-sm text-slate-500 mt-1">Menganalisis data transaksi</p>
+              <p className="text-foreground font-medium">Memproses file...</p>
+              <p className="text-sm text-muted-foreground mt-1">Menganalisis data transaksi</p>
             </motion.div>
           ) : parsedData.length > 0 ? (
             <motion.div
@@ -388,29 +388,29 @@ export function ExcelUpload() {
                 className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center gap-3"
               >
                 <div className="p-2 bg-emerald-500/20 rounded-lg">
-                  <Check className="w-5 h-5 text-emerald-400" />
+                  <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-400">{parsedData.length} transaksi siap diimpor</p>
-                  <p className="text-xs text-emerald-500/70">Data valid dan siap disimpan</p>
+                  <p className="font-semibold text-emerald-600 dark:text-emerald-400">{parsedData.length} transaksi siap diimpor</p>
+                  <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">Data valid dan siap disimpan</p>
                 </div>
               </motion.div>
 
               <div className="bg-muted rounded-xl border border-border overflow-hidden">
                 <div className="p-3 border-b border-border bg-card">
                   <div className="flex items-center gap-2">
-                    <Table className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-medium text-slate-300">Preview Data</span>
+                    <Table className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">Preview Data</span>
                   </div>
                 </div>
                 <div className="max-h-44 overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-card sticky top-0">
                       <tr>
-                        <th className="p-2 text-left text-xs font-medium text-slate-400">Tanggal</th>
-                        <th className="p-2 text-left text-xs font-medium text-slate-400">Deskripsi</th>
-                        <th className="p-2 text-right text-xs font-medium text-slate-400">Jumlah</th>
-                        <th className="p-2 text-center text-xs font-medium text-slate-400">Tipe</th>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground">Tanggal</th>
+                        <th className="p-2 text-left text-xs font-medium text-muted-foreground">Deskripsi</th>
+                        <th className="p-2 text-right text-xs font-medium text-muted-foreground">Jumlah</th>
+                        <th className="p-2 text-center text-xs font-medium text-muted-foreground">Tipe</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -422,16 +422,16 @@ export function ExcelUpload() {
                           transition={{ delay: i * 0.03 }}
                           className="border-t border-border/50"
                         >
-                          <td className="p-2 text-slate-300">{t.date.toLocaleDateString('id-ID')}</td>
-                          <td className="p-2 text-slate-300 truncate max-w-[120px]">{t.description}</td>
-                          <td className="p-2 text-right font-medium text-slate-300">
+                          <td className="p-2 text-foreground">{t.date.toLocaleDateString('id-ID')}</td>
+                          <td className="p-2 text-foreground truncate max-w-[120px]">{t.description}</td>
+                          <td className="p-2 text-right font-medium text-foreground">
                             Rp {t.amount.toLocaleString('id-ID')}
                           </td>
                           <td className="p-2 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               t.type === 'income' 
-                                ? 'bg-emerald-500/20 text-emerald-400' 
-                                : 'bg-rose-500/20 text-rose-400'
+                                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                                : 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
                             }`}>
                               {t.type === 'income' ? 'Masuk' : 'Keluar'}
                             </span>
@@ -441,7 +441,7 @@ export function ExcelUpload() {
                     </tbody>
                   </table>
                   {parsedData.length > 6 && (
-                    <div className="p-2 text-center text-xs text-slate-500 bg-card border-t border-border">
+                    <div className="p-2 text-center text-xs text-muted-foreground bg-card border-t border-border">
                       ...dan {parsedData.length - 6} transaksi lainnya
                     </div>
                   )}
@@ -455,8 +455,8 @@ export function ExcelUpload() {
                   className="space-y-2"
                 >
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">Mengimpor data...</span>
-                    <span className="text-violet-400 font-medium">{progress}%</span>
+                    <span className="text-muted-foreground">Mengimpor data...</span>
+                    <span className="text-violet-500 font-medium">{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-violet-500 [&>div]:to-purple-500" />
                 </motion.div>
@@ -467,7 +467,7 @@ export function ExcelUpload() {
                   variant="ghost"
                   onClick={resetUpload}
                   disabled={importing}
-                  className="flex-1 text-slate-300 hover:text-white hover:bg-muted"
+                  className="flex-1 text-muted-foreground hover:text-foreground hover:bg-muted"
                 >
                   <X className="w-4 h-4 mr-2" />
                   Batal
@@ -494,14 +494,14 @@ export function ExcelUpload() {
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-violet-500/20 rounded-lg">
-                  <FileSpreadsheet className="w-5 h-5 text-violet-400" />
+                  <FileSpreadsheet className="w-5 h-5 text-violet-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white truncate max-w-[200px]">{file.name}</p>
-                  <p className="text-xs text-slate-400">Memproses...</p>
+                  <p className="text-sm font-medium text-foreground truncate max-w-[200px]">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">Memproses...</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={resetUpload} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="icon" onClick={resetUpload} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
               </Button>
             </motion.div>
@@ -515,48 +515,48 @@ export function ExcelUpload() {
               transition={{ delay: 0.3 }}
               className="space-y-3"
             >
-              <div className="flex items-center gap-2 text-slate-300">
-                <Info className="w-4 h-4 text-violet-400" />
+              <div className="flex items-center gap-2 text-foreground">
+                <Info className="w-4 h-4 text-violet-500" />
                 <span className="text-sm font-medium">Format File</span>
               </div>
               
               {/* Example Table */}
               <div className="bg-muted rounded-xl border border-border overflow-hidden">
                 <div className="p-2 bg-card border-b border-border">
-                  <span className="text-xs font-medium text-slate-400">Contoh Format Tabel</span>
+                  <span className="text-xs font-medium text-muted-foreground">Contoh Format Tabel</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-card">
                       <tr>
-                        <th className="p-2 text-left font-medium text-emerald-400 border-r border-border">Tanggal</th>
-                        <th className="p-2 text-left font-medium text-emerald-400 border-r border-border">Deskripsi</th>
-                        <th className="p-2 text-left font-medium text-emerald-400 border-r border-border">Jumlah</th>
-                        <th className="p-2 text-left font-medium text-emerald-400 border-r border-border">Tipe</th>
-                        <th className="p-2 text-left font-medium text-violet-400">Kategori</th>
+                        <th className="p-2 text-left font-medium text-emerald-600 dark:text-emerald-400 border-r border-border">Tanggal</th>
+                        <th className="p-2 text-left font-medium text-emerald-600 dark:text-emerald-400 border-r border-border">Deskripsi</th>
+                        <th className="p-2 text-left font-medium text-emerald-600 dark:text-emerald-400 border-r border-border">Jumlah</th>
+                        <th className="p-2 text-left font-medium text-emerald-600 dark:text-emerald-400 border-r border-border">Tipe</th>
+                        <th className="p-2 text-left font-medium text-violet-500">Kategori</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-t border-border">
-                        <td className="p-2 text-slate-300 border-r border-border">01/01/2025</td>
-                        <td className="p-2 text-slate-300 border-r border-border">Gaji Bulanan</td>
-                        <td className="p-2 text-slate-300 border-r border-border">5000000</td>
-                        <td className="p-2 text-emerald-400 border-r border-border">income</td>
-                        <td className="p-2 text-slate-400">Gaji</td>
+                        <td className="p-2 text-foreground border-r border-border">01/01/2025</td>
+                        <td className="p-2 text-foreground border-r border-border">Gaji Bulanan</td>
+                        <td className="p-2 text-foreground border-r border-border">5000000</td>
+                        <td className="p-2 text-emerald-600 dark:text-emerald-400 border-r border-border">income</td>
+                        <td className="p-2 text-muted-foreground">Gaji</td>
                       </tr>
                       <tr className="border-t border-border">
-                        <td className="p-2 text-slate-300 border-r border-border">02/01/2025</td>
-                        <td className="p-2 text-slate-300 border-r border-border">Makan Siang</td>
-                        <td className="p-2 text-slate-300 border-r border-border">25000</td>
-                        <td className="p-2 text-rose-400 border-r border-border">expense</td>
-                        <td className="p-2 text-slate-400">Makanan</td>
+                        <td className="p-2 text-foreground border-r border-border">02/01/2025</td>
+                        <td className="p-2 text-foreground border-r border-border">Makan Siang</td>
+                        <td className="p-2 text-foreground border-r border-border">25000</td>
+                        <td className="p-2 text-rose-600 dark:text-rose-400 border-r border-border">expense</td>
+                        <td className="p-2 text-muted-foreground">Makanan</td>
                       </tr>
                       <tr className="border-t border-border">
-                        <td className="p-2 text-slate-300 border-r border-border">03/01/2025</td>
-                        <td className="p-2 text-slate-300 border-r border-border">Bensin</td>
-                        <td className="p-2 text-slate-300 border-r border-border">150000</td>
-                        <td className="p-2 text-rose-400 border-r border-border">expense</td>
-                        <td className="p-2 text-slate-400">Transportasi</td>
+                        <td className="p-2 text-foreground border-r border-border">03/01/2025</td>
+                        <td className="p-2 text-foreground border-r border-border">Bensin</td>
+                        <td className="p-2 text-foreground border-r border-border">150000</td>
+                        <td className="p-2 text-rose-600 dark:text-rose-400 border-r border-border">expense</td>
+                        <td className="p-2 text-muted-foreground">Transportasi</td>
                       </tr>
                     </tbody>
                   </table>
@@ -566,30 +566,30 @@ export function ExcelUpload() {
               {/* Format Info */}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="space-y-1">
-                  <p className="font-medium text-slate-300">Kolom Wajib:</p>
+                  <p className="font-medium text-foreground">Kolom Wajib:</p>
                   <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-slate-400">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Check className="w-3 h-3 text-emerald-500" />
                       Tanggal / Date / Tgl
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-400">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Check className="w-3 h-3 text-emerald-500" />
                       Deskripsi / Keterangan
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-400">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Check className="w-3 h-3 text-emerald-500" />
                       Jumlah / Nominal / Amount
                     </div>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-medium text-slate-300">Kolom Opsional:</p>
+                  <p className="font-medium text-foreground">Kolom Opsional:</p>
                   <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-slate-400">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Check className="w-3 h-3 text-violet-500" />
                       Tipe (income/expense)
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-400">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Check className="w-3 h-3 text-violet-500" />
                       Kategori
                     </div>
@@ -598,9 +598,9 @@ export function ExcelUpload() {
               </div>
               
               {/* Date Format Info */}
-              <div className="bg-violet-500/10 rounded-lg p-3 border border-violet-500/20">
-                <p className="text-xs font-medium text-violet-400 mb-1">Format Tanggal yang Diterima:</p>
-                <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+              <div className="bg-violet-500/10 dark:bg-violet-500/20 rounded-lg p-3 border border-violet-500/20">
+                <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">Format Tanggal yang Diterima:</p>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <span className="bg-muted px-2 py-0.5 rounded">DD/MM/YYYY</span>
                   <span className="bg-muted px-2 py-0.5 rounded">YYYY-MM-DD</span>
                   <span className="bg-muted px-2 py-0.5 rounded">DD-MM-YYYY</span>
