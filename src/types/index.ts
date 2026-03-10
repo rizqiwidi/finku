@@ -37,6 +37,7 @@ export interface FinancialSummary {
   income: number;
   expenses: number;
   savings: number;
+  totalSavings?: number;
   savingsRate: number;
 }
 

@@ -31,10 +31,21 @@ export async function GET(request: Request) {
       },
     });
 
+    const savingsAggregate = await prisma.transaction.aggregate({
+      where: {
+        userId: user.id,
+        type: 'savings',
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
     const summary = calculateFinancialSummary(transactions);
 
     return NextResponse.json({
       ...summary,
+      totalSavings: savingsAggregate._sum.amount || 0,
       month: targetMonth,
       year: targetYear,
     });

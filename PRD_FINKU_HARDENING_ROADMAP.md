@@ -174,6 +174,7 @@ src/app/page.tsx
 - [x] Pengaturan akun kini punya aksi reset data transaksi dan reset alokasi anggaran dengan verifikasi password login di server-side.
 - [x] Dialog settings dan import kini memakai layout header tetap + body scroll, import mendukung CSV/XLSX/XLSM tervalidasi, dan background dashboard/login state diperkuat untuk mode terang maupun gelap.
 - [x] Summary cards frontend dipindahkan ke card solid tanpa gradient, responsivitas mobile diperketat agar nominal/aksi tidak terpotong, axis chart dark mode diperjelas, dan chart kategori kini bisa di-switch antara pengeluaran dan pemasukan.
+- [x] Sidebar desktop dipisah ke layer fixed agar tidak tertinggal saat scroll, dashboard diberi filter bulan/tahun untuk summary+chart+list, tinggi chart dikunci agar switch kategori tidak membuat card membesar, dan kartu `Total Tabungan` memakai akumulasi tabungan all-time.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -206,3 +207,4 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-11: Settings dialog menambah aksi reset transaksi dan reset alokasi anggaran yang mewajibkan password login aktif sebagai verifikasi sebelum eksekusi server-side.
 - 2026-03-11: Dialog settings/import dirapikan menjadi modal dengan header tetap dan area konten scroll internal; import dibuka kembali untuk file CSV/XLSX/XLSM memakai parser `read-excel-file` agar tetap menghindari dependensi `xlsx` lama, dan background halaman utama diperkuat dengan layer gradient yang lebih terbaca pada light/dark mode.
 - 2026-03-11: Summary cards dashboard/riwayat diganti ke background solid dengan aksen warna agar tidak menyatu dengan gradient halaman, grid dan tombol aksi dipadatkan ulang untuk mobile, axis chart bulanan menggunakan warna CSS variable yang valid di dark mode, dan chart kategori diberi switch pengeluaran/pemasukan yang memicu query server sesuai tipe transaksi.
+- 2026-03-11: Sidebar desktop diubah menjadi panel fixed independen dari scroll halaman agar menu tidak tertinggal; dashboard kini memiliki filter bulan/tahun yang mengalir ke summary, budget, transaksi terbaru, tren 6 bulan, dan pie chart kategori, sementara `Total Tabungan` dipisah ke aggregate all-time agar tidak lagi terikat filter tanggal bulanan.

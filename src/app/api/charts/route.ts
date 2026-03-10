@@ -12,9 +12,10 @@ export async function GET(request: Request) {
     const transactionType = searchParams.get('transactionType') === 'income' ? 'income' : 'expense';
 
     if (type === 'monthly' || type === 'trend') {
-      const now = new Date();
-      const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+      const targetYear = year ? parseInt(year) : new Date().getFullYear();
+      const rangeEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+      const rangeStart = new Date(targetYear, targetMonth - 6, 1);
       const transactions = await prisma.transaction.findMany({
         where: {
           userId: user.id,
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
       });
 
       const monthlyData = Array.from({ length: 6 }, (_, index) => {
-        const targetDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+        const targetDate = new Date(targetYear, targetMonth - 6 + index, 1);
         return {
           key: `${targetDate.getFullYear()}-${targetDate.getMonth()}`,
           month: targetDate.toLocaleDateString('id-ID', { month: 'short' }),

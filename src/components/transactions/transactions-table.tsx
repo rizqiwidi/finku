@@ -233,7 +233,7 @@ export function TransactionsTable() {
       className="space-y-4"
     >
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         <motion.div whileHover={{ scale: 1.02, y: -2 }}>
           <Card className="border border-emerald-500/20 bg-card/92 shadow-lg backdrop-blur">
             <CardContent className="p-4 sm:p-5">

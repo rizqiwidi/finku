@@ -182,10 +182,15 @@ export function useBudgets(month?: number, year?: number) {
 }
 
 // Chart data hooks
-export function useMonthlyChartData() {
+export function useMonthlyChartData(month?: number, year?: number) {
+  const params = new URLSearchParams();
+  params.append('type', 'monthly');
+  if (month) params.append('month', month.toString());
+  if (year) params.append('year', year.toString());
+
   return useQuery<MonthlyData[]>({
-    queryKey: ['charts', 'monthly'],
-    queryFn: () => fetchApi<MonthlyData[]>('/api/charts?type=monthly'),
+    queryKey: ['charts', 'monthly', month, year],
+    queryFn: () => fetchApi<MonthlyData[]>(`/api/charts?${params.toString()}`),
   });
 }
 

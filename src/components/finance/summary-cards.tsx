@@ -31,7 +31,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="border border-border/70 bg-card/90 shadow-lg backdrop-blur">
             <CardContent className="p-4 sm:p-5">
@@ -89,7 +89,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
     },
     {
       title: 'Total Tabungan',
-      value: summary?.savings ?? 0,
+      value: summary?.totalSavings ?? summary?.savings ?? 0,
       icon: PiggyBank,
       color: 'text-amber-500',
       tone: 'border-amber-500/20',
@@ -106,7 +106,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4"
     >
       {cards.map((card, index) => (
         <motion.div 

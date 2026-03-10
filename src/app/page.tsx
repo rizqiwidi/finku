@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
+  CalendarRange,
   LayoutDashboard, 
   LayoutGrid,
   FileText, 
@@ -27,6 +28,13 @@ import { ExcelUpload } from '@/components/finance/excel-upload';
 import { CategorySettingsPage } from '@/components/categories/category-settings-page';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import type { Transaction } from '@/types';
@@ -35,14 +43,31 @@ type View = 'dashboard' | 'transactions' | 'categories' | 'admin';
 
 export default function Home() {
   const { user, isLoading, logout } = useAuth();
+  const today = new Date();
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
-  const [selectedMonth] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState((today.getMonth() + 1).toString());
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear().toString());
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  const month = selectedMonth.getMonth() + 1;
-  const year = selectedMonth.getFullYear();
+  const month = Number(selectedMonth);
+  const year = Number(selectedYear);
+  const monthOptions = [
+    { value: '1', label: 'Januari' },
+    { value: '2', label: 'Februari' },
+    { value: '3', label: 'Maret' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'Mei' },
+    { value: '6', label: 'Juni' },
+    { value: '7', label: 'Juli' },
+    { value: '8', label: 'Agustus' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' },
+  ];
+  const yearOptions = Array.from({ length: 5 }, (_, index) => (today.getFullYear() - index).toString());
 
   const handleEdit = (transaction: Transaction) => {
     setEditTransaction(transaction);
@@ -194,16 +219,27 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <div className="relative flex min-h-screen">
+      <AnimatePresence initial={false}>
         {sidebarOpen && (
-          <aside className="hidden w-64 shrink-0 lg:flex">
-            <div className="sticky top-0 flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
+          <motion.aside
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="fixed inset-y-0 left-0 z-30 hidden w-64 lg:flex"
+          >
+            <div className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
               {renderSidebarContent()}
             </div>
-          </aside>
+          </motion.aside>
         )}
+      </AnimatePresence>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          'relative flex min-h-screen flex-col transition-[padding] duration-300',
+          sidebarOpen ? 'lg:pl-64' : 'lg:pl-0'
+        )}
+      >
         {/* Header */}
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
           <div className="container mx-auto px-3 py-3 sm:px-4 lg:px-6">
@@ -302,6 +338,51 @@ export default function Home() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4"
               >
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/88 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-primary/10 p-2 text-primary">
+                      <CalendarRange className="h-4 w-4" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Filter Dashboard</p>
+                      <p className="text-xs text-muted-foreground">
+                        Berlaku untuk summary, anggaran, tren, pie chart, dan transaksi terbaru.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                      <SelectTrigger className="h-9 min-w-[150px] bg-background/80">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthOptions.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="h-9 min-w-[112px] bg-background/80">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {yearOptions.map((item) => (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </motion.div>
+
                 {/* Summary Cards */}
                 <SummaryCards month={month} year={year} />
 
@@ -324,7 +405,7 @@ export default function Home() {
 
                 {/* Charts Row - Same Height */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <MonthlyChart />
+                  <MonthlyChart month={month} year={year} />
                   <CategoryChart month={month} year={year} />
                 </div>
 
@@ -367,7 +448,6 @@ export default function Home() {
             )}
           </AnimatePresence>
         </main>
-      </div>
       </div>
     </div>
   );

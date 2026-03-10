@@ -142,8 +142,12 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
-export function MonthlyChart() {
-  const { data, isLoading } = useMonthlyChartData();
+export function MonthlyChart({ month, year }: { month: number; year: number }) {
+  const { data, isLoading } = useMonthlyChartData(month, year);
+  const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
     <motion.div
@@ -152,17 +156,18 @@ export function MonthlyChart() {
       transition={{ delay: 0.2 }}
       className="h-full"
     >
-      <Card className="border-0 shadow-lg bg-card h-full flex flex-col overflow-hidden">
-        <CardHeader className="pb-2 flex-shrink-0">
+      <Card className="flex h-full min-h-[390px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[430px]">
+        <CardHeader className="flex-shrink-0 pb-2">
           <CardTitle className="text-sm font-semibold text-foreground sm:text-base">Tren Keuangan</CardTitle>
+          <p className="text-xs text-muted-foreground">6 bulan hingga {selectedLabel}</p>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col">
           {isLoading ? (
-            <div className="flex min-h-[250px] flex-1 items-center justify-center">
+            <div className="flex h-[250px] items-center justify-center sm:h-[300px]">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="min-h-[250px] flex-1">
+            <div className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -227,6 +232,10 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
   const activeType = showIncomeCategories ? 'income' : 'expense';
   const activeLabel = showIncomeCategories ? 'Pemasukan' : 'Pengeluaran';
   const { data, isLoading } = useCategorySpending(month, year, activeType);
+  const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
     <motion.div
@@ -235,13 +244,16 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
       transition={{ delay: 0.3 }}
       className="h-full"
     >
-      <Card className="border-0 shadow-lg bg-card h-full flex flex-col overflow-hidden">
+      <Card className="flex h-full min-h-[390px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[430px]">
         <CardHeader className="flex-shrink-0 gap-3 pb-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
-              {activeLabel} per Kategori
-            </CardTitle>
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+                {activeLabel} per Kategori
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{selectedLabel}</p>
+            </div>
+            <div className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-muted/50 px-3 py-1.5 sm:self-auto">
               <span
                 className={cn(
                   'text-[11px] font-medium sm:text-xs',
@@ -268,12 +280,12 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
           {isLoading ? (
-            <div className="flex-1 flex items-center justify-center min-h-[250px]">
+            <div className="flex h-[250px] items-center justify-center sm:h-[300px]">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : data && data.length > 0 ? (
             <>
-              <div className="flex-1 min-h-[180px]">
+              <div className="h-[220px] sm:h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -304,27 +316,29 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
                 </ResponsiveContainer>
               </div>
               
-              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                {data?.slice(0, 6).map((item, index) => (
-                  <motion.div 
-                    key={index} 
-                    className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <div 
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-xs text-muted-foreground truncate flex-1">{item.category}</span>
-                    <span className="text-xs font-bold text-amber-500">{item.percentage?.toFixed(0)}%</span>
-                  </motion.div>
-                ))}
+              <div className="mt-2 max-h-[120px] overflow-y-auto pr-1 sm:max-h-[136px]">
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  {data?.slice(0, 8).map((item, index) => (
+                    <motion.div 
+                      key={index} 
+                      className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 transition-colors hover:bg-muted"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <div 
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="flex-1 truncate text-xs text-muted-foreground">{item.category}</span>
+                      <span className="text-xs font-bold text-amber-500">{item.percentage?.toFixed(0)}%</span>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-muted-foreground gap-2">
+            <div className="flex h-[250px] flex-col items-center justify-center gap-2 text-muted-foreground sm:h-[300px]">
               <p className="text-center text-sm">Belum ada data {activeLabel.toLowerCase()}</p>
             </div>
           )}
