@@ -206,7 +206,7 @@ export default function Home() {
         <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
         <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
-          <div className="container mx-auto px-4 py-3">
+          <div className="container mx-auto px-3 py-3 sm:px-4 lg:px-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Mobile menu button */}
@@ -292,7 +292,7 @@ export default function Home() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 container mx-auto px-4 py-4 max-w-6xl">
+        <main className="container mx-auto flex-1 max-w-7xl px-3 py-4 sm:px-4 sm:py-5 lg:px-6">
           <AnimatePresence mode="wait">
             {activeView === 'dashboard' && (
               <motion.div
@@ -310,7 +310,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="flex flex-wrap justify-end gap-2"
+                  className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end"
                 >
                   <ExcelUpload />
                   <AddTransactionDialog 

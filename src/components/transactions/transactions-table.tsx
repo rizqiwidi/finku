@@ -233,17 +233,19 @@ export function TransactionsTable() {
       className="space-y-4"
     >
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <motion.div whileHover={{ scale: 1.02, y: -2 }}>
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
+          <Card className="border border-emerald-500/20 bg-card/92 shadow-lg backdrop-blur">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
                   <ArrowUpRight className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Pemasukan</p>
-                  <p className="text-sm sm:text-base font-bold text-emerald-600 truncate">{formatCurrency(totalIncome)}</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">Pemasukan</p>
+                  <p className="text-[clamp(1rem,4vw,1.25rem)] font-bold leading-tight text-emerald-600 whitespace-normal break-words">
+                    {formatCurrency(totalIncome)}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -251,15 +253,17 @@ export function TransactionsTable() {
         </motion.div>
         
         <motion.div whileHover={{ scale: 1.02, y: -2 }}>
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/50 dark:to-red-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
+          <Card className="border border-rose-500/20 bg-card/92 shadow-lg backdrop-blur">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
                 <div className="p-2 bg-rose-100 dark:bg-rose-900/50 rounded-xl">
                   <ArrowDownRight className="w-4 h-4 text-rose-500" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Pengeluaran</p>
-                  <p className="text-sm sm:text-base font-bold text-rose-500 truncate">{formatCurrency(totalExpense)}</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">Pengeluaran</p>
+                  <p className="text-[clamp(1rem,4vw,1.25rem)] font-bold leading-tight text-rose-500 whitespace-normal break-words">
+                    {formatCurrency(totalExpense)}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -267,15 +271,17 @@ export function TransactionsTable() {
         </motion.div>
         
         <motion.div whileHover={{ scale: 1.02, y: -2 }}>
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
+          <Card className="border border-amber-500/20 bg-card/92 shadow-lg backdrop-blur">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
                 <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-xl">
                   <PiggyBank className="w-4 h-4 text-amber-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Tabungan</p>
-                  <p className="text-sm sm:text-base font-bold text-amber-600 truncate">{formatCurrency(totalSavings)}</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">Tabungan</p>
+                  <p className="text-[clamp(1rem,4vw,1.25rem)] font-bold leading-tight text-amber-600 whitespace-normal break-words">
+                    {formatCurrency(totalSavings)}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -284,13 +290,11 @@ export function TransactionsTable() {
         
         <motion.div whileHover={{ scale: 1.02, y: -2 }}>
           <Card className={cn(
-            "border-0 shadow-lg",
-            balance >= 0 
-              ? "bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/50 dark:to-cyan-950/30" 
-              : "bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50 dark:to-rose-950/30"
+            'border bg-card/92 shadow-lg backdrop-blur',
+            balance >= 0 ? 'border-teal-500/20' : 'border-rose-500/20'
           )}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
                 <div className={cn(
                   "p-2 rounded-xl",
                   balance >= 0 ? "bg-teal-100 dark:bg-teal-900/50" : "bg-red-100 dark:bg-red-900/50"
@@ -298,8 +302,11 @@ export function TransactionsTable() {
                   <Calendar className={cn("w-4 h-4", balance >= 0 ? "text-teal-600" : "text-red-500")} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Saldo</p>
-                  <p className={cn("text-sm sm:text-base font-bold truncate", balance >= 0 ? "text-teal-600" : "text-red-500")}>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">Saldo</p>
+                  <p className={cn(
+                    'text-[clamp(1rem,4vw,1.25rem)] font-bold leading-tight whitespace-normal break-words',
+                    balance >= 0 ? "text-teal-600" : "text-red-500"
+                  )}>
                     {formatCurrency(balance)}
                   </p>
                 </div>
@@ -411,7 +418,7 @@ export function TransactionsTable() {
         </CardHeader>
         <CardContent>
           {/* Filter Controls */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
               <Filter className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filter:</span>
@@ -419,7 +426,7 @@ export function TransactionsTable() {
             
             {/* Month Select */}
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[110px] h-8">
+              <SelectTrigger className="h-8 w-[110px] min-w-[110px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -431,7 +438,7 @@ export function TransactionsTable() {
             
             {/* Year Select */}
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[80px] h-8">
+              <SelectTrigger className="h-8 w-[88px] min-w-[88px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -443,7 +450,7 @@ export function TransactionsTable() {
             
             {/* Type Select */}
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-[110px] h-8">
+              <SelectTrigger className="h-8 w-[132px] min-w-[132px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

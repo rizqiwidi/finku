@@ -189,14 +189,19 @@ export function useMonthlyChartData() {
   });
 }
 
-export function useCategorySpending(month?: number, year?: number) {
+export function useCategorySpending(
+  month?: number,
+  year?: number,
+  transactionType: 'expense' | 'income' = 'expense'
+) {
   const params = new URLSearchParams();
   params.append('type', 'category');
   if (month) params.append('month', month.toString());
   if (year) params.append('year', year.toString());
+  params.append('transactionType', transactionType);
 
   return useQuery<CategorySpending[]>({
-    queryKey: ['charts', 'category', month, year],
+    queryKey: ['charts', 'category', transactionType, month, year],
     queryFn: () => fetchApi<CategorySpending[]>(`/api/charts?${params.toString()}`),
   });
 }

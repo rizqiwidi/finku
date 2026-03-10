@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -16,7 +17,8 @@ import {
   Cell,
 } from 'recharts';
 import { useMonthlyChartData, useCategorySpending } from '@/hooks/use-api';
-import { formatCurrency } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { cn, formatCurrency } from '@/lib/utils';
 
 // Custom tooltip for pie chart
 interface CustomTooltipProps {
@@ -152,15 +154,15 @@ export function MonthlyChart() {
     >
       <Card className="border-0 shadow-lg bg-card h-full flex flex-col overflow-hidden">
         <CardHeader className="pb-2 flex-shrink-0">
-          <CardTitle className="text-base font-semibold text-foreground">Tren Keuangan</CardTitle>
+          <CardTitle className="text-sm font-semibold text-foreground sm:text-base">Tren Keuangan</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col">
+        <CardContent className="flex flex-1 flex-col">
           {isLoading ? (
-            <div className="flex-1 flex items-center justify-center min-h-[250px]">
+            <div className="flex min-h-[250px] flex-1 items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex-1 min-h-[250px]">
+            <div className="min-h-[250px] flex-1">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -173,19 +175,21 @@ export function MonthlyChart() {
                       <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.8} />
                   <XAxis 
                     dataKey="month" 
                     className="text-xs"
-                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
-                    axisLine={{ stroke: 'hsl(var(--border))' }}
+                    tick={{ fill: 'var(--foreground)', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tickLine={{ stroke: 'var(--border)' }}
                   />
                   <YAxis 
                     className="text-xs"
-                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }}
-                    axisLine={{ stroke: 'hsl(var(--border))' }}
+                    tick={{ fill: 'var(--foreground)', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tickLine={{ stroke: 'var(--border)' }}
                     tickFormatter={(value) => `${(value / 1000000).toFixed(0)}jt`}
-                    width={45}
+                    width={52}
                   />
                   <Tooltip 
                     content={<CustomAreaTooltip />}
@@ -219,7 +223,10 @@ export function MonthlyChart() {
 }
 
 export function CategoryChart({ month, year }: { month: number; year: number }) {
-  const { data, isLoading } = useCategorySpending(month, year);
+  const [showIncomeCategories, setShowIncomeCategories] = useState(false);
+  const activeType = showIncomeCategories ? 'income' : 'expense';
+  const activeLabel = showIncomeCategories ? 'Pemasukan' : 'Pengeluaran';
+  const { data, isLoading } = useCategorySpending(month, year, activeType);
 
   return (
     <motion.div
@@ -229,8 +236,35 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
       className="h-full"
     >
       <Card className="border-0 shadow-lg bg-card h-full flex flex-col overflow-hidden">
-        <CardHeader className="pb-2 flex-shrink-0">
-          <CardTitle className="text-base font-semibold text-foreground">Pengeluaran per Kategori</CardTitle>
+        <CardHeader className="flex-shrink-0 gap-3 pb-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+              {activeLabel} per Kategori
+            </CardTitle>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5">
+              <span
+                className={cn(
+                  'text-[11px] font-medium sm:text-xs',
+                  !showIncomeCategories ? 'text-foreground' : 'text-muted-foreground'
+                )}
+              >
+                Pengeluaran
+              </span>
+              <Switch
+                checked={showIncomeCategories}
+                onCheckedChange={setShowIncomeCategories}
+                aria-label="Ubah kategori chart ke pemasukan"
+              />
+              <span
+                className={cn(
+                  'text-[11px] font-medium sm:text-xs',
+                  showIncomeCategories ? 'text-foreground' : 'text-muted-foreground'
+                )}
+              >
+                Pemasukan
+              </span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
           {isLoading ? (
@@ -270,7 +304,7 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
                 </ResponsiveContainer>
               </div>
               
-              <div className="grid grid-cols-2 gap-1.5 mt-2">
+              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {data?.slice(0, 6).map((item, index) => (
                   <motion.div 
                     key={index} 
@@ -291,7 +325,7 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
             </>
           ) : (
             <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <p className="text-sm">Belum ada data pengeluaran</p>
+              <p className="text-center text-sm">Belum ada data {activeLabel.toLowerCase()}</p>
             </div>
           )}
         </CardContent>

@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const type = searchParams.get('type'); // 'monthly', 'category', 'trend'
     const month = searchParams.get('month');
     const year = searchParams.get('year');
+    const transactionType = searchParams.get('transactionType') === 'income' ? 'income' : 'expense';
 
     if (type === 'monthly' || type === 'trend') {
       const now = new Date();
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
       const categories = await prisma.category.findMany({
         where: {
           userId: user.id,
-          type: 'expense',
+          type: transactionType,
         },
         select: {
           id: true,
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
               by: ['categoryId'],
               where: {
                 userId: user.id,
-                type: 'expense',
+                type: transactionType,
                 categoryId: {
                   in: categories.map((category) => category.id),
                 },
@@ -113,12 +114,12 @@ export async function GET(request: Request) {
       }));
 
       // Calculate total and percentages
-      const totalExpenses = categorySpending.reduce((sum, c) => sum + c.amount, 0);
+      const totalAmount = categorySpending.reduce((sum, c) => sum + c.amount, 0);
       const dataWithPercentage = categorySpending
         .filter((c) => c.amount > 0)
         .map((c) => ({
           ...c,
-          percentage: totalExpenses > 0 ? (c.amount / totalExpenses) * 100 : 0,
+          percentage: totalAmount > 0 ? (c.amount / totalAmount) * 100 : 0,
         }))
         .sort((a, b) => b.amount - a.amount);
 

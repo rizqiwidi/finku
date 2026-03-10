@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSummary } from '@/hooks/use-api';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 const container = {
   hidden: { opacity: 0 },
@@ -31,10 +31,10 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i} className="border-0 shadow-lg">
-            <CardContent className="p-4">
+          <Card key={i} className="border border-border/70 bg-card/90 shadow-lg backdrop-blur">
+            <CardContent className="p-4 sm:p-5">
               <div className="flex items-center justify-center h-16">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
@@ -56,9 +56,9 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       value: summary?.balance ?? 0,
       icon: Wallet,
       color: (summary?.balance ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500',
-      bgGradient: (summary?.balance ?? 0) >= 0 
-        ? 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/30' 
-        : 'bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/50 dark:to-rose-950/30',
+      tone: (summary?.balance ?? 0) >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20',
+      glow: (summary?.balance ?? 0) >= 0 ? 'bg-emerald-500/12 dark:bg-emerald-400/10' : 'bg-rose-500/12 dark:bg-rose-400/10',
+      accentBar: (summary?.balance ?? 0) >= 0 ? 'bg-emerald-500' : 'bg-rose-500',
       iconBg: (summary?.balance ?? 0) >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-red-100 dark:bg-red-900/50',
       trend: (summary?.balance ?? 0) >= 0 ? 'positive' : 'negative',
       description: monthName,
@@ -68,7 +68,9 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       value: summary?.income ?? 0,
       icon: TrendingUp,
       color: 'text-emerald-500',
-      bgGradient: 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/50 dark:to-green-950/30',
+      tone: 'border-emerald-500/20',
+      glow: 'bg-emerald-500/12 dark:bg-emerald-400/10',
+      accentBar: 'bg-emerald-500',
       iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
       trend: 'positive',
       description: 'Total pemasukan bulan ini',
@@ -78,7 +80,9 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       value: summary?.expenses ?? 0,
       icon: TrendingDown,
       color: 'text-rose-500',
-      bgGradient: 'bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/50 dark:to-red-950/30',
+      tone: 'border-rose-500/20',
+      glow: 'bg-rose-500/12 dark:bg-rose-400/10',
+      accentBar: 'bg-rose-500',
       iconBg: 'bg-rose-100 dark:bg-rose-900/50',
       trend: 'negative',
       description: 'Total pengeluaran bulan ini',
@@ -88,7 +92,9 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       value: summary?.savings ?? 0,
       icon: PiggyBank,
       color: 'text-amber-500',
-      bgGradient: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/30',
+      tone: 'border-amber-500/20',
+      glow: 'bg-amber-500/12 dark:bg-amber-400/10',
+      accentBar: 'bg-amber-500',
       iconBg: 'bg-amber-100 dark:bg-amber-900/50',
       trend: 'neutral',
       description: 'Tabungan bulan ini',
@@ -100,7 +106,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
     >
       {cards.map((card, index) => (
         <motion.div 
@@ -110,41 +116,47 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
           transition={{ type: "spring", stiffness: 300 }}
           className="w-full"
         >
-          <Card className={`relative overflow-hidden border-0 shadow-lg ${card.bgGradient} h-full`}>
-            {/* Decorative glow */}
-            <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-3xl opacity-20 bg-white dark:bg-white/10" />
+          <Card className={cn(
+            'relative h-full overflow-hidden border bg-card/92 shadow-xl shadow-black/5 backdrop-blur dark:shadow-black/25',
+            card.tone
+          )}>
+            <div className={cn('absolute inset-x-0 top-0 h-1', card.accentBar)} />
+            <div className={cn('absolute -right-10 top-4 h-24 w-24 rounded-full blur-3xl', card.glow)} />
             
-            <CardContent className="p-4 relative">
-              <div className="flex items-start justify-between gap-2">
+            <CardContent className="relative p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1.5 flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground truncate">{card.title}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className={`text-lg sm:text-xl font-bold ${card.color} truncate`}>
+                  <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">{card.title}</p>
+                  <div className="flex items-start gap-1.5">
+                    <span className={cn(
+                      'text-[clamp(1.15rem,5vw,1.8rem)] font-bold leading-tight whitespace-normal break-words',
+                      card.color
+                    )}>
                       {formatCurrency(card.value)}
                     </span>
                     {card.trend === 'positive' && (
                       <motion.div
                         initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3, type: "spring" }}
-                      >
-                        <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.3, type: "spring" }}
+                    >
+                        <ArrowUpRight className="mt-1 h-3 w-3 shrink-0 text-emerald-500 sm:h-4 sm:w-4" />
                       </motion.div>
                     )}
                     {card.trend === 'negative' && (
                       <motion.div
                         initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3, type: "spring" }}
-                      >
-                        <ArrowDownRight className="w-3 h-3 sm:w-4 sm:h-4 text-rose-500 shrink-0" />
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.3, type: "spring" }}
+                    >
+                        <ArrowDownRight className="mt-1 h-3 w-3 shrink-0 text-rose-500 sm:h-4 sm:w-4" />
                       </motion.div>
                     )}
                   </div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.description}</p>
+                  <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{card.description}</p>
                 </div>
                 <motion.div 
-                  className={`p-2 sm:p-2.5 rounded-xl ${card.iconBg} backdrop-blur-sm shrink-0`}
+                  className={`rounded-xl p-2 sm:p-2.5 ${card.iconBg} shrink-0 backdrop-blur-sm`}
                   whileHover={{ rotate: 5, scale: 1.1 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >

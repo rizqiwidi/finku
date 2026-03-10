@@ -433,7 +433,7 @@ export function ExcelUpload() {
         <Button 
           variant="outline" 
           size="sm"
-          className="gap-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 border-0 shadow-lg shadow-violet-500/25 transition-all duration-300 hover:scale-105"
+          className="w-full gap-2 border-0 bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25 transition-all duration-300 hover:scale-105 hover:from-violet-600 hover:to-purple-600 sm:w-auto"
         >
           <Upload className="w-4 h-4" />
           Import File
