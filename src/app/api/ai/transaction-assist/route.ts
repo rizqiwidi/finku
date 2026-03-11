@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
-import { buildHeuristicDraftFromText } from '@/lib/transaction-drafts';
-import { inferTransactionDraftWithGroq, mergeDraftWithFallback } from '@/lib/transaction-ai';
+import { buildHeuristicDraftsFromText } from '@/lib/transaction-drafts';
+import { inferTransactionDraftsWithGroq } from '@/lib/transaction-ai';
 import type { TransactionType } from '@/types';
 
 export async function POST(request: Request) {
@@ -33,15 +33,16 @@ export async function POST(request: Request) {
       type: category.type as TransactionType,
     }));
 
-    const fallbackDraft = buildHeuristicDraftFromText(prompt, categories);
-    const aiDraft = await inferTransactionDraftWithGroq({
+    const fallbackDrafts = buildHeuristicDraftsFromText(prompt, categories);
+    const aiDraftBundle = await inferTransactionDraftsWithGroq({
       sourceText: prompt,
       categories,
       sourceLabel,
     });
 
     return NextResponse.json({
-      draft: mergeDraftWithFallback(aiDraft, fallbackDraft),
+      drafts: aiDraftBundle.transactions.length > 0 ? aiDraftBundle.transactions : fallbackDrafts,
+      summary: aiDraftBundle.summary ?? null,
     });
   } catch (error) {
     if (isAuthError(error)) {

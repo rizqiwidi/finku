@@ -16,8 +16,8 @@ interface SummaryResponse extends FinancialSummary {
   year: number;
 }
 
-interface MonthlyData {
-  month: string;
+interface TrendDataPoint {
+  label: string;
   income: number;
   expenses: number;
 }
@@ -182,15 +182,20 @@ export function useBudgets(month?: number, year?: number) {
 }
 
 // Chart data hooks
-export function useMonthlyChartData(month?: number, year?: number) {
+export function useMonthlyChartData(
+  month?: number,
+  year?: number,
+  granularity: 'hour' | 'day' | 'month' = 'month'
+) {
   const params = new URLSearchParams();
   params.append('type', 'monthly');
   if (month) params.append('month', month.toString());
   if (year) params.append('year', year.toString());
+  params.append('granularity', granularity);
 
-  return useQuery<MonthlyData[]>({
-    queryKey: ['charts', 'monthly', month, year],
-    queryFn: () => fetchApi<MonthlyData[]>(`/api/charts?${params.toString()}`),
+  return useQuery<TrendDataPoint[]>({
+    queryKey: ['charts', 'monthly', granularity, month, year],
+    queryFn: () => fetchApi<TrendDataPoint[]>(`/api/charts?${params.toString()}`),
   });
 }
 

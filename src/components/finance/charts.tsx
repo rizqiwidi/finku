@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { useMonthlyChartData, useCategorySpending } from '@/hooks/use-api';
 import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, formatCurrency } from '@/lib/utils';
 
 // Custom tooltip for pie chart
@@ -143,11 +144,18 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 export function MonthlyChart({ month, year }: { month: number; year: number }) {
-  const { data, isLoading } = useMonthlyChartData(month, year);
+  const [trendMode, setTrendMode] = useState<'hour' | 'day' | 'month'>('month');
+  const { data, isLoading } = useMonthlyChartData(month, year, trendMode);
   const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
     month: 'long',
     year: 'numeric',
   });
+  const trendDescription =
+    trendMode === 'hour'
+      ? 'Per jam pada hari dengan transaksi terbaru di periode terpilih'
+      : trendMode === 'day'
+        ? `Per hari selama ${selectedLabel}`
+        : `Per bulan selama ${year}`;
 
   return (
     <motion.div
@@ -157,9 +165,44 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
       className="h-full"
     >
       <Card className="flex h-full min-h-[390px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[430px]">
-        <CardHeader className="flex-shrink-0 pb-2">
-          <CardTitle className="text-sm font-semibold text-foreground sm:text-base">Tren Keuangan</CardTitle>
-          <p className="text-xs text-muted-foreground">6 bulan hingga {selectedLabel}</p>
+        <CardHeader className="flex-shrink-0 gap-3 pb-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+                Tren Keuangan
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{trendDescription}</p>
+            </div>
+            <ToggleGroup
+              type="single"
+              value={trendMode}
+              onValueChange={(value) => {
+                if (value === 'hour' || value === 'day' || value === 'month') {
+                  setTrendMode(value);
+                }
+              }}
+              className="inline-flex w-full justify-start gap-1 rounded-full border border-border bg-muted/50 p-1 sm:w-auto"
+            >
+              <ToggleGroupItem
+                value="hour"
+                className="rounded-full px-3 text-[11px] data-[state=on]:bg-background sm:text-xs"
+              >
+                Jam
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="day"
+                className="rounded-full px-3 text-[11px] data-[state=on]:bg-background sm:text-xs"
+              >
+                Hari
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="month"
+                className="rounded-full px-3 text-[11px] data-[state=on]:bg-background sm:text-xs"
+              >
+                Bulan
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col">
           {isLoading ? (
@@ -182,11 +225,13 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.8} />
                   <XAxis 
-                    dataKey="month" 
+                    dataKey="label" 
                     className="text-xs"
                     tick={{ fill: 'var(--foreground)', fontSize: 11, fontWeight: 500 }}
                     axisLine={{ stroke: 'var(--border)' }}
                     tickLine={{ stroke: 'var(--border)' }}
+                    interval={trendMode === 'hour' ? 3 : trendMode === 'day' ? 4 : 0}
+                    minTickGap={trendMode === 'month' ? 12 : 8}
                   />
                   <YAxis 
                     className="text-xs"

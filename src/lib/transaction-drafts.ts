@@ -21,8 +21,19 @@ export const suggestedTransactionDraftSchema = z.object({
 
 export type SuggestedTransactionDraft = z.infer<typeof suggestedTransactionDraftSchema>;
 
+export const suggestedTransactionDraftBundleSchema = z.object({
+  transactions: z.array(suggestedTransactionDraftSchema).min(1).max(8),
+  summary: z.string().trim().max(500).nullable().optional(),
+});
+
+export type SuggestedTransactionDraftBundle = z.infer<typeof suggestedTransactionDraftBundleSchema>;
+
 function compactWhitespace(value: string) {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+export function compactTransactionText(value: string) {
+  return compactWhitespace(value);
 }
 
 export function normalizeCategoryName(value: string) {
@@ -193,6 +204,40 @@ function keywordCategoryMap(type: TransactionType) {
   ];
 }
 
+export function findCategoryIdFromDescription(
+  categories: CategoryOption[],
+  type: TransactionType,
+  description?: string | null
+) {
+  const categoriesOfType = categories.filter((category) => category.type === type);
+  if (categoriesOfType.length === 0) {
+    return null;
+  }
+
+  const haystack = normalizeCategoryName(description ?? '');
+  if (!haystack) {
+    return null;
+  }
+
+  for (const item of keywordCategoryMap(type)) {
+    if (item.keywords.some((keyword) => haystack.includes(keyword))) {
+      const mapped = categoriesOfType.find(
+        (category) => normalizeCategoryName(category.name) === normalizeCategoryName(item.category)
+      );
+
+      if (mapped) {
+        return mapped.id;
+      }
+    }
+  }
+
+  const byDescription = categoriesOfType.find((category) =>
+    haystack.includes(normalizeCategoryName(category.name))
+  );
+
+  return byDescription?.id ?? null;
+}
+
 export function findMatchingCategoryId(
   categories: CategoryOption[],
   type: TransactionType,
@@ -226,24 +271,9 @@ export function findMatchingCategoryId(
 
   const haystack = normalizeCategoryName(description ?? '');
   if (haystack) {
-    for (const item of keywordCategoryMap(type)) {
-      if (item.keywords.some((keyword) => haystack.includes(keyword))) {
-        const mapped = categoriesOfType.find(
-          (category) => normalizeCategoryName(category.name) === normalizeCategoryName(item.category)
-        );
-
-        if (mapped) {
-          return mapped.id;
-        }
-      }
-    }
-
-    const byDescription = categoriesOfType.find((category) =>
-      haystack.includes(normalizeCategoryName(category.name))
-    );
-
+    const byDescription = findCategoryIdFromDescription(categories, type, description);
     if (byDescription) {
-      return byDescription.id;
+      return byDescription;
     }
   }
 
@@ -280,4 +310,39 @@ export function buildHeuristicDraftFromText(
       ? 'Draft disusun dari pola nominal terbesar dan keyword pada teks struk.'
       : 'Draft disusun dari keyword teks. Periksa kembali nominal sebelum disimpan.',
   });
+}
+
+export function splitTransactionSegments(text: string) {
+  const normalizedText = text
+    .split(/\r?\n/)
+    .map((line) => compactWhitespace(line))
+    .filter(Boolean);
+
+  if (normalizedText.length > 1) {
+    return normalizedText;
+  }
+
+  const singleLine = compactWhitespace(text);
+  let segments = singleLine
+    .split(/\s+(?:lalu|kemudian|terus|setelah itu)\s+|;/i)
+    .map((segment) => compactWhitespace(segment))
+    .filter((segment) => segment.length >= 6);
+
+  const amountMatches = singleLine.match(/(?:rp\s*)?\d[\d.,]*/gi) ?? [];
+  if (segments.length <= 1 && amountMatches.length > 1) {
+    segments = singleLine
+      .split(/\s+(?:dan|serta)\s+(?=[^.;]*?(?:rp\s*)?\d)|,\s*(?=[^.;]*?(?:rp\s*)?\d)/i)
+      .map((segment) => compactWhitespace(segment))
+      .filter((segment) => segment.length >= 6);
+  }
+
+  return segments.length > 1 ? segments : [singleLine];
+}
+
+export function buildHeuristicDraftsFromText(
+  text: string,
+  categories: CategoryOption[]
+) {
+  const segments = splitTransactionSegments(text);
+  return segments.slice(0, 8).map((segment) => buildHeuristicDraftFromText(segment, categories));
 }

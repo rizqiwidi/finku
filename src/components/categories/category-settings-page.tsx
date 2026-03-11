@@ -498,8 +498,8 @@ export function CategorySettingsPage() {
       </motion.div>
 
       <Dialog open={dialogOpen} onOpenChange={(nextOpen) => !nextOpen && closeDialog()}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+          <DialogHeader className="shrink-0 border-b border-border p-5 pb-4">
             <DialogTitle>
               {editingCategory ? 'Edit Kategori' : 'Tambah Kategori Kustom'}
             </DialogTitle>
@@ -509,9 +509,10 @@ export function CategorySettingsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="category-name">Nama Kategori</Label>
                   <Input
@@ -625,59 +626,61 @@ export function CategorySettingsPage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-border bg-muted/40 p-4">
-                <p className="mb-2 text-sm font-medium text-foreground">Preview</p>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="rounded-2xl p-3 shadow-sm"
-                    style={{ backgroundColor: `${form.color}18` }}
-                  >
-                    {React.createElement(getCategoryIconComponent(form.icon), {
-                      className: 'h-5 w-5',
-                      style: { color: form.color },
-                    })}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      {form.name || 'Nama kategori'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {TYPE_LABELS[form.type]}
-                    </p>
+                <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                  <p className="mb-2 text-sm font-medium text-foreground">Preview</p>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="rounded-2xl p-3 shadow-sm"
+                      style={{ backgroundColor: `${form.color}18` }}
+                    >
+                      {React.createElement(getCategoryIconComponent(form.icon), {
+                        className: 'h-5 w-5',
+                        style: { color: form.color },
+                      })}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {form.name || 'Nama kategori'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {TYPE_LABELS[form.type]}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <Label>Pilih Icon</Label>
-              <ScrollArea className="h-[320px] rounded-2xl border border-border bg-muted/30 p-3">
-                <div className="grid grid-cols-4 gap-2">
-                  {CATEGORY_ICON_OPTIONS.map((option) => (
-                    <Button
-                      key={option.name}
-                      type="button"
-                      variant="ghost"
-                      className={cn(
-                        'h-auto flex-col gap-2 rounded-xl border px-2 py-3 text-center',
-                        form.icon === option.name
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-background/70'
-                      )}
-                      onClick={() =>
-                        setForm((current) => ({ ...current, icon: option.name }))
-                      }
-                    >
-                      <option.Icon className="h-4 w-4" />
-                      <span className="text-[10px] leading-tight">{option.label}</span>
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
+              <div className="space-y-3">
+                <Label>Pilih Icon</Label>
+                <ScrollArea className="h-[240px] rounded-2xl border border-border bg-muted/30 p-3 sm:h-[320px]">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {CATEGORY_ICON_OPTIONS.map((option) => (
+                      <Button
+                        key={option.name}
+                        type="button"
+                        variant="ghost"
+                        className={cn(
+                          'h-auto flex-col gap-2 rounded-xl border px-2 py-3 text-center',
+                          form.icon === option.name
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-background/70'
+                        )}
+                        onClick={() =>
+                          setForm((current) => ({ ...current, icon: option.name }))
+                        }
+                      >
+                        <option.Icon className="h-4 w-4" />
+                        <span className="text-[10px] leading-tight">{option.label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="shrink-0 border-t border-border bg-background p-5 pt-4">
+            <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row">
             <Button variant="outline" onClick={closeDialog}>
               Batal
             </Button>
@@ -689,6 +692,7 @@ export function CategorySettingsPage() {
               )}
               {editingCategory ? 'Simpan Perubahan' : 'Simpan Kategori'}
             </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

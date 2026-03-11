@@ -9,13 +9,146 @@ export async function GET(request: Request) {
     const type = searchParams.get('type'); // 'monthly', 'category', 'trend'
     const month = searchParams.get('month');
     const year = searchParams.get('year');
+    const granularity = searchParams.get('granularity');
     const transactionType = searchParams.get('transactionType') === 'income' ? 'income' : 'expense';
 
     if (type === 'monthly' || type === 'trend') {
       const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
       const targetYear = year ? parseInt(year) : new Date().getFullYear();
-      const rangeEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59);
-      const rangeStart = new Date(targetYear, targetMonth - 6, 1);
+      const normalizedGranularity =
+        granularity === 'hour' || granularity === 'day' ? granularity : 'month';
+
+      if (normalizedGranularity === 'hour') {
+        const periodStart = new Date(targetYear, targetMonth - 1, 1);
+        const periodEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+        const latestTransaction = await prisma.transaction.findFirst({
+          where: {
+            userId: user.id,
+            date: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
+          orderBy: {
+            date: 'desc',
+          },
+          select: {
+            date: true,
+          },
+        });
+
+        const focusDate = latestTransaction
+          ? new Date(latestTransaction.date)
+          : new Date(targetYear, targetMonth - 1, 1, 12, 0, 0);
+        const rangeStart = new Date(
+          focusDate.getFullYear(),
+          focusDate.getMonth(),
+          focusDate.getDate(),
+          0,
+          0,
+          0
+        );
+        const rangeEnd = new Date(
+          focusDate.getFullYear(),
+          focusDate.getMonth(),
+          focusDate.getDate(),
+          23,
+          59,
+          59
+        );
+
+        const transactions = await prisma.transaction.findMany({
+          where: {
+            userId: user.id,
+            date: {
+              gte: rangeStart,
+              lte: rangeEnd,
+            },
+          },
+          select: {
+            amount: true,
+            type: true,
+            date: true,
+          },
+        });
+
+        const hourlyData = Array.from({ length: 24 }, (_, hourIndex) => ({
+          key: hourIndex,
+          label: `${hourIndex.toString().padStart(2, '0')}:00`,
+          income: 0,
+          expenses: 0,
+        }));
+        const hourlyMap = new Map(hourlyData.map((item) => [item.key, item]));
+
+        for (const transaction of transactions) {
+          const transactionDate = new Date(transaction.date);
+          const bucket = hourlyMap.get(transactionDate.getHours());
+
+          if (!bucket) {
+            continue;
+          }
+
+          if (transaction.type === 'income') {
+            bucket.income += transaction.amount;
+          }
+
+          if (transaction.type === 'expense') {
+            bucket.expenses += transaction.amount;
+          }
+        }
+
+        return NextResponse.json(hourlyData.map(({ key, ...item }) => item));
+      }
+
+      if (normalizedGranularity === 'day') {
+        const rangeStart = new Date(targetYear, targetMonth - 1, 1);
+        const rangeEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+        const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
+        const transactions = await prisma.transaction.findMany({
+          where: {
+            userId: user.id,
+            date: {
+              gte: rangeStart,
+              lte: rangeEnd,
+            },
+          },
+          select: {
+            amount: true,
+            type: true,
+            date: true,
+          },
+        });
+
+        const dailyData = Array.from({ length: daysInMonth }, (_, dayIndex) => ({
+          key: dayIndex + 1,
+          label: `${dayIndex + 1}`,
+          income: 0,
+          expenses: 0,
+        }));
+        const dailyMap = new Map(dailyData.map((item) => [item.key, item]));
+
+        for (const transaction of transactions) {
+          const transactionDate = new Date(transaction.date);
+          const bucket = dailyMap.get(transactionDate.getDate());
+
+          if (!bucket) {
+            continue;
+          }
+
+          if (transaction.type === 'income') {
+            bucket.income += transaction.amount;
+          }
+
+          if (transaction.type === 'expense') {
+            bucket.expenses += transaction.amount;
+          }
+        }
+
+        return NextResponse.json(dailyData.map(({ key, ...item }) => item));
+      }
+
+      const rangeStart = new Date(targetYear, 0, 1);
+      const rangeEnd = new Date(targetYear, 11, 31, 23, 59, 59);
       const transactions = await prisma.transaction.findMany({
         where: {
           userId: user.id,
@@ -31,22 +164,19 @@ export async function GET(request: Request) {
         },
       });
 
-      const monthlyData = Array.from({ length: 6 }, (_, index) => {
-        const targetDate = new Date(targetYear, targetMonth - 6 + index, 1);
-        return {
-          key: `${targetDate.getFullYear()}-${targetDate.getMonth()}`,
-          month: targetDate.toLocaleDateString('id-ID', { month: 'short' }),
-          income: 0,
-          expenses: 0,
-        };
-      });
-
+      const monthlyData = Array.from({ length: 12 }, (_, monthIndex) => ({
+        key: monthIndex,
+        label: new Date(targetYear, monthIndex, 1).toLocaleDateString('id-ID', {
+          month: 'short',
+        }),
+        income: 0,
+        expenses: 0,
+      }));
       const monthlyMap = new Map(monthlyData.map((item) => [item.key, item]));
 
       for (const transaction of transactions) {
         const transactionDate = new Date(transaction.date);
-        const key = `${transactionDate.getFullYear()}-${transactionDate.getMonth()}`;
-        const bucket = monthlyMap.get(key);
+        const bucket = monthlyMap.get(transactionDate.getMonth());
 
         if (!bucket) {
           continue;

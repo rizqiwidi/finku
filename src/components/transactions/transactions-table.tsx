@@ -519,98 +519,190 @@ export function TransactionsTable() {
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs w-10">
-                      <button
-                        onClick={toggleAllSelection}
-                        className="p-1 hover:bg-muted rounded transition-colors"
-                      >
-                        {filteredTransactions && selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-500" />
-                        ) : (
-                          <Square className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-xs">Tanggal</TableHead>
-                    <TableHead className="text-xs">Deskripsi</TableHead>
-                    <TableHead className="text-xs">Kategori</TableHead>
-                    <TableHead className="text-xs">Tipe</TableHead>
-                    <TableHead className="text-xs text-right">Jumlah</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="space-y-2 sm:hidden">
                   {filteredTransactions?.map((transaction: Transaction, index: number) => {
                     const IconComponent = getCategoryIconComponent(transaction.category.icon);
                     const isSelected = selectedIds.has(transaction.id);
-                    
+
                     return (
-                      <motion.tr
+                      <motion.button
                         key={transaction.id}
+                        type="button"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.01 }}
                         className={cn(
-                          "cursor-pointer transition-colors",
-                          isSelected ? "bg-emerald-100 dark:bg-emerald-900/20" : "hover:bg-muted/50"
+                          'w-full rounded-2xl border p-3 text-left transition-colors',
+                          isSelected
+                            ? 'border-emerald-500/40 bg-emerald-500/10'
+                            : 'border-border bg-card/70 hover:bg-muted/40'
                         )}
                         onClick={() => toggleSelection(transaction.id)}
                       >
-                        <TableCell className="py-2">
+                        <div className="flex items-start gap-3">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleSelection(transaction.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                            onClick={(event) => event.stopPropagation()}
+                            className="mt-1 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                           />
-                        </TableCell>
-                        <TableCell className="font-medium text-sm py-2">
-                          {formatDate(new Date(transaction.date))}
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="p-1 rounded"
-                              style={{ backgroundColor: `${transaction.category.color}20` }}
-                            >
-                              <IconComponent
-                                className="w-3 h-3"
-                                style={{ color: transaction.category.color }}
-                              />
+                          <div className="min-w-0 flex-1 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div
+                                  className="rounded-lg p-1.5"
+                                  style={{ backgroundColor: `${transaction.category.color}20` }}
+                                >
+                                  <IconComponent
+                                    className="h-3.5 w-3.5"
+                                    style={{ color: transaction.category.color }}
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium text-foreground">
+                                    {transaction.description}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatDate(new Date(transaction.date))}
+                                  </p>
+                                </div>
+                              </div>
+                              <span
+                                className={cn(
+                                  'shrink-0 text-sm font-semibold',
+                                  transaction.type === 'income'
+                                    ? 'text-emerald-600'
+                                    : transaction.type === 'expense'
+                                      ? 'text-rose-500'
+                                      : 'text-amber-600'
+                                )}
+                              >
+                                {transaction.type === 'income' ? '+' : '-'}
+                                {formatCurrency(transaction.amount)}
+                              </span>
                             </div>
-                            <span className="text-sm">{transaction.description}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className="border-0 text-xs"
+                                style={{
+                                  backgroundColor: `${transaction.category.color}20`,
+                                  color: transaction.category.color,
+                                }}
+                              >
+                                {transaction.category.name}
+                              </Badge>
+                              {getTypeBadge(transaction.type)}
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge
-                            variant="outline"
-                            className="text-xs border-0"
-                            style={{
-                              backgroundColor: `${transaction.category.color}20`,
-                              color: transaction.category.color,
-                            }}
-                          >
-                            {transaction.category.name}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          {getTypeBadge(transaction.type)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-sm py-2">
-                          <span className={cn(
-                            transaction.type === 'income' ? 'text-emerald-600' : 
-                            transaction.type === 'expense' ? 'text-rose-500' : 'text-amber-600'
-                          )}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                          </span>
-                        </TableCell>
-                      </motion.tr>
+                        </div>
+                      </motion.button>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </div>
+
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-xs w-10">
+                          <button
+                            onClick={toggleAllSelection}
+                            className="rounded p-1 transition-colors hover:bg-muted"
+                          >
+                            {filteredTransactions && selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 ? (
+                              <CheckSquare className="w-4 h-4 text-emerald-500" />
+                            ) : (
+                              <Square className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                        </TableHead>
+                        <TableHead className="text-xs">Tanggal</TableHead>
+                        <TableHead className="text-xs">Deskripsi</TableHead>
+                        <TableHead className="text-xs">Kategori</TableHead>
+                        <TableHead className="text-xs">Tipe</TableHead>
+                        <TableHead className="text-xs text-right">Jumlah</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTransactions?.map((transaction: Transaction, index: number) => {
+                        const IconComponent = getCategoryIconComponent(transaction.category.icon);
+                        const isSelected = selectedIds.has(transaction.id);
+
+                        return (
+                          <motion.tr
+                            key={transaction.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.01 }}
+                            className={cn(
+                              'cursor-pointer transition-colors',
+                              isSelected ? 'bg-emerald-100 dark:bg-emerald-900/20' : 'hover:bg-muted/50'
+                            )}
+                            onClick={() => toggleSelection(transaction.id)}
+                          >
+                            <TableCell className="py-2">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelection(transaction.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                              />
+                            </TableCell>
+                            <TableCell className="py-2 text-sm font-medium">
+                              {formatDate(new Date(transaction.date))}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="rounded p-1"
+                                  style={{ backgroundColor: `${transaction.category.color}20` }}
+                                >
+                                  <IconComponent
+                                    className="w-3 h-3"
+                                    style={{ color: transaction.category.color }}
+                                  />
+                                </div>
+                                <span className="text-sm">{transaction.description}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-2">
+                              <Badge
+                                variant="outline"
+                                className="border-0 text-xs"
+                                style={{
+                                  backgroundColor: `${transaction.category.color}20`,
+                                  color: transaction.category.color,
+                                }}
+                              >
+                                {transaction.category.name}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {getTypeBadge(transaction.type)}
+                            </TableCell>
+                            <TableCell className="py-2 text-right text-sm font-semibold">
+                              <span
+                                className={cn(
+                                  transaction.type === 'income'
+                                    ? 'text-emerald-600'
+                                    : transaction.type === 'expense'
+                                      ? 'text-rose-500'
+                                      : 'text-amber-600'
+                                )}
+                              >
+                                {transaction.type === 'income' ? '+' : '-'}
+                                {formatCurrency(transaction.amount)}
+                              </span>
+                            </TableCell>
+                          </motion.tr>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
             
             {!isLoading && (!filteredTransactions || filteredTransactions.length === 0) && (

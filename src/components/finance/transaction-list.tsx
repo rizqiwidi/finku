@@ -107,14 +107,14 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
   return (
     <Card className="border-0 shadow-lg overflow-hidden">
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <CardTitle className="text-lg font-semibold">Transaksi Terbaru</CardTitle>
             <Badge variant="secondary" className="font-normal">
               {transactions?.length ?? 0} transaksi
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Select All Button */}
             <Button
               variant="ghost"
@@ -175,7 +175,7 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
         </div>
       </CardHeader>
       <CardContent className="px-0 pb-0">
-        <ScrollArea className="h-[400px] px-6">
+        <ScrollArea className="h-[400px] px-4 sm:px-6">
           <AnimatePresence mode="popLayout">
             {transactions?.map((transaction, index) => {
               const IconComponent = getCategoryIconComponent(transaction.category.icon);
@@ -191,12 +191,12 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.03 }}
                   className={cn(
-                    "group flex items-center justify-between py-4 border-b last:border-0 transition-colors cursor-pointer -mx-2 px-2 rounded-lg",
+                    "group flex flex-col gap-3 border-b py-4 last:border-0 transition-colors cursor-pointer rounded-lg px-3 sm:-mx-2 sm:flex-row sm:items-center sm:justify-between sm:px-2",
                     isSelected ? "bg-emerald-500/10" : "hover:bg-muted/50"
                   )}
                   onClick={() => toggleSelection(transaction.id)}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => toggleSelection(transaction.id)}
@@ -214,12 +214,12 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
                         style={{ color: transaction.category.color }}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm">{transaction.description}</p>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="truncate font-medium text-sm">{transaction.description}</p>
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge 
                           variant="outline" 
-                          className="text-xs font-normal px-2 py-0 h-5 border-0"
+                          className="h-5 border-0 px-2 py-0 text-xs font-normal"
                           style={{ 
                             backgroundColor: `${transaction.category.color}20`,
                             color: transaction.category.color,
@@ -234,8 +234,8 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
+                  <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+                    <div className="text-left sm:text-right">
                       <div className={cn(
                         "font-semibold flex items-center gap-1",
                         isIncome ? "text-emerald-500" : "text-rose-500"
@@ -255,7 +255,7 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
                           variant="ghost"
                           size="icon"
                           onClick={(e) => e.stopPropagation()}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                          className="h-8 w-8 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </Button>

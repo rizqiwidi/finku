@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   CalendarDays,
   FileScan,
@@ -27,8 +26,24 @@ import {
 } from '@/components/ui/select';
 import { useCategories, useCreateTransaction } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
-import { findMatchingCategoryId, type SuggestedTransactionDraft } from '@/lib/transaction-drafts';
+import {
+  findCategoryIdFromDescription,
+  findMatchingCategoryId,
+  type SuggestedTransactionDraft,
+} from '@/lib/transaction-drafts';
 import type { Category, TransactionType } from '@/types';
+
+const MAX_OCR_UPLOAD_BYTES = 6 * 1024 * 1024;
+const MAX_RECEIPT_IMAGE_BYTES = 15 * 1024 * 1024;
+const MAX_RECEIPT_EDGE = 1800;
+
+interface PreparedReceiptFile {
+  file: File;
+  originalName: string;
+  originalSize: number;
+  uploadSize: number;
+  mode: 'image-optimized' | 'pdf';
+}
 
 function formatDateInput(value?: string | null) {
   if (!value) {
@@ -43,9 +58,91 @@ function formatDateInput(value?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const kilobytes = bytes / 1024;
+  if (kilobytes < 1024) {
+    return `${Math.round(kilobytes)} KB`;
+  }
+
+  return `${(kilobytes / 1024).toFixed(1)} MB`;
+}
+
+async function optimizeReceiptImage(file: File) {
+  const imageUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('Gambar struk tidak bisa dibaca di browser.'));
+      element.src = imageUrl;
+    });
+
+    const longestEdge = Math.max(image.width, image.height);
+    const scale = longestEdge > MAX_RECEIPT_EDGE ? MAX_RECEIPT_EDGE / longestEdge : 1;
+    const targetWidth = Math.max(1, Math.round(image.width * scale));
+    const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) {
+      throw new Error('Browser tidak mendukung canvas untuk optimasi gambar.');
+    }
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, targetWidth, targetHeight);
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    const imageData = context.getImageData(0, 0, targetWidth, targetHeight);
+    for (let index = 0; index < imageData.data.length; index += 4) {
+      const red = imageData.data[index];
+      const green = imageData.data[index + 1];
+      const blue = imageData.data[index + 2];
+      const grayscale = Math.round(red * 0.299 + green * 0.587 + blue * 0.114);
+      imageData.data[index] = grayscale;
+      imageData.data[index + 1] = grayscale;
+      imageData.data[index + 2] = grayscale;
+    }
+    context.putImageData(imageData, 0, 0);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.68)
+    );
+
+    if (!blob) {
+      throw new Error('Gagal menyiapkan gambar hasil kompresi.');
+    }
+
+    const normalizedName = file.name.replace(/\.[^.]+$/, '') || 'receipt';
+    const optimizedFile = new File([blob], `${normalizedName}-optimized.jpg`, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+
+    return {
+      file: optimizedFile,
+      originalName: file.name,
+      originalSize: file.size,
+      uploadSize: optimizedFile.size,
+      mode: 'image-optimized',
+    } satisfies PreparedReceiptFile;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
 export function ReceiptScanDialog() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [preparedFile, setPreparedFile] = useState<PreparedReceiptFile | null>(null);
+  const [prepareLoading, setPrepareLoading] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [draft, setDraft] = useState<SuggestedTransactionDraft | null>(null);
   const [parsedText, setParsedText] = useState('');
@@ -66,6 +163,8 @@ export function ReceiptScanDialog() {
 
   const resetState = () => {
     setFile(null);
+    setPreparedFile(null);
+    setPrepareLoading(false);
     setScanLoading(false);
     setDraft(null);
     setParsedText('');
@@ -88,37 +187,108 @@ export function ReceiptScanDialog() {
       return;
     }
 
-    const matchedCategoryId = findMatchingCategoryId(
-      categories.map((category) => ({ id: category.id, name: category.name, type: category.type })),
-      type,
-      draft.categoryName,
-      `${description} ${notes}`
-    );
+    const mappedCategories = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      type: category.type,
+    }));
+    const descriptionMatch = findCategoryIdFromDescription(mappedCategories, type, `${description} ${notes}`);
+    const categoryNameMatch = draft.categoryName?.trim()
+      ? findMatchingCategoryId(mappedCategories, type, draft.categoryName, null)
+      : null;
+    const matchedCategoryId =
+      (descriptionMatch && categoryNameMatch && descriptionMatch !== categoryNameMatch
+        ? descriptionMatch
+        : descriptionMatch ?? categoryNameMatch) ??
+      filteredCategories[0]?.id ??
+      '';
 
     setCategoryId((current) => {
       if (current && filteredCategories.some((category) => category.id === current)) {
         return current;
       }
 
-      return matchedCategoryId ?? filteredCategories[0]?.id ?? '';
+      return matchedCategoryId;
     });
   }, [categories, description, draft, filteredCategories, notes, type]);
 
-  const handleFileChange = (selectedFile: File | null) => {
+  const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) {
       return;
     }
 
-    if (selectedFile.size > 6 * 1024 * 1024) {
+    setFile(null);
+    setPreparedFile(null);
+    setDraft(null);
+    setParsedText('');
+
+    const isPdf =
+      selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+
+    if (isPdf) {
+      if (selectedFile.size > MAX_OCR_UPLOAD_BYTES) {
+        toast({
+          title: 'File PDF terlalu besar',
+          description: 'Gunakan file PDF dengan ukuran maksimal 6MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setPreparedFile({
+        file: selectedFile,
+        originalName: selectedFile.name,
+        originalSize: selectedFile.size,
+        uploadSize: selectedFile.size,
+        mode: 'pdf',
+      });
+      setFile(selectedFile);
+      return;
+    }
+
+    if (!selectedFile.type.startsWith('image/')) {
       toast({
-        title: 'File terlalu besar',
-        description: 'Gunakan file struk dengan ukuran maksimal 6MB.',
+        title: 'Format file belum didukung',
+        description: 'Gunakan gambar struk atau PDF.',
         variant: 'destructive',
       });
       return;
     }
 
-    setFile(selectedFile);
+    if (selectedFile.size > MAX_RECEIPT_IMAGE_BYTES) {
+      toast({
+        title: 'Gambar terlalu besar',
+        description: 'Gunakan gambar struk dengan ukuran maksimal 15MB sebelum optimasi.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setPrepareLoading(true);
+    try {
+      const optimizedFile = await optimizeReceiptImage(selectedFile);
+
+      if (optimizedFile.uploadSize > MAX_OCR_UPLOAD_BYTES) {
+        toast({
+          title: 'Hasil optimasi masih terlalu besar',
+          description: 'Gunakan foto struk yang lebih fokus atau potong area yang tidak perlu.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setPreparedFile(optimizedFile);
+      setFile(optimizedFile.file);
+    } catch (error) {
+      toast({
+        title: 'Gagal menyiapkan gambar struk',
+        description:
+          error instanceof Error ? error.message : 'Coba gunakan foto struk lain yang lebih jelas.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPrepareLoading(false);
+    }
   };
 
   const handleScan = async () => {
@@ -240,12 +410,18 @@ export function ReceiptScanDialog() {
                   type="file"
                   accept="image/*,.pdf"
                   className="mt-4"
-                  onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
+                  onChange={(event) => void handleFileChange(event.target.files?.[0] ?? null)}
                 />
-                {file ? (
+                {prepareLoading ? (
                   <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-xs text-muted-foreground">
-                    <Badge variant="secondary">{Math.round(file.size / 1024)} KB</Badge>
-                    <span className="max-w-[240px] truncate">{file.name}</span>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menyiapkan gambar di perangkat Anda...</span>
+                  </div>
+                ) : null}
+                {preparedFile ? (
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-xs text-muted-foreground">
+                    <Badge variant="secondary">{formatFileSize(preparedFile.uploadSize)}</Badge>
+                    <span className="max-w-[220px] truncate">{preparedFile.originalName}</span>
                   </div>
                 ) : null}
               </div>
@@ -255,8 +431,24 @@ export function ReceiptScanDialog() {
                   <Sparkles className="h-4 w-4 text-amber-500" />
                   Review sebelum simpan
                 </div>
-                Setelah scan selesai, Anda bisa cek nominal, kategori, tanggal, deskripsi, lalu pilih simpan atau batal.
+                Gambar struk akan dikompresi dan di-grayscale langsung di browser agar upload OCR lebih ringan. Setelah scan selesai, Anda bisa cek nominal, kategori, tanggal, deskripsi, lalu pilih simpan atau batal.
               </div>
+
+              {preparedFile ? (
+                <div className="rounded-2xl border border-border bg-muted/25 p-4 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">
+                      Asal {formatFileSize(preparedFile.originalSize)}
+                    </Badge>
+                    <Badge variant="outline">
+                      Upload {formatFileSize(preparedFile.uploadSize)}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {preparedFile.mode === 'image-optimized' ? 'Grayscale + Compress' : 'PDF langsung'}
+                    </Badge>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-4">
@@ -367,7 +559,7 @@ export function ReceiptScanDialog() {
                 type="button"
                 className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
                 onClick={handleScan}
-                disabled={scanLoading}
+                disabled={scanLoading || prepareLoading}
               >
                 {scanLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileScan className="mr-2 h-4 w-4" />}
                 Proses Scan

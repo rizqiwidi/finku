@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 import { getOcrSpaceApiKey } from '@/lib/env';
-import { inferTransactionDraftWithGroq, mergeDraftWithFallback } from '@/lib/transaction-ai';
+import { inferTransactionDraftsWithGroq } from '@/lib/transaction-ai';
 import { buildHeuristicDraftFromText } from '@/lib/transaction-drafts';
 import type { TransactionType } from '@/types';
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     const fallbackDraft = buildHeuristicDraftFromText(parsedText, categories);
 
     try {
-      const aiDraft = await inferTransactionDraftWithGroq({
+      const aiDraftBundle = await inferTransactionDraftsWithGroq({
         sourceText: parsedText,
         categories,
         sourceLabel: 'receipt',
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         parsedText,
-        draft: mergeDraftWithFallback(aiDraft, fallbackDraft),
+        draft: aiDraftBundle.transactions[0] ?? fallbackDraft,
       });
     } catch {
       return NextResponse.json({
