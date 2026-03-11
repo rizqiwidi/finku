@@ -17,7 +17,6 @@ import {
   Cell,
 } from 'recharts';
 import { useMonthlyChartData, useCategorySpending } from '@/hooks/use-api';
-import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -146,6 +145,8 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 export function MonthlyChart({ month, year }: { month: number; year: number }) {
   const [trendMode, setTrendMode] = useState<'hour' | 'day' | 'month'>('month');
   const { data, isLoading } = useMonthlyChartData(month, year, trendMode);
+  const totalIncome = (data ?? []).reduce((sum, item) => sum + item.income, 0);
+  const totalExpenses = (data ?? []).reduce((sum, item) => sum + item.expenses, 0);
   const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
     month: 'long',
     year: 'numeric',
@@ -164,44 +165,56 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
       transition={{ delay: 0.2 }}
       className="h-full"
     >
-      <Card className="flex h-full min-h-[390px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[430px]">
-        <CardHeader className="flex-shrink-0 gap-3 pb-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex h-full min-h-[410px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[440px]">
+        <CardHeader className="flex-shrink-0 gap-4 pb-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+              <CardTitle className="text-base font-semibold text-foreground">
                 Tren Keuangan
               </CardTitle>
-              <p className="text-xs text-muted-foreground">{trendDescription}</p>
+              <p className="text-sm text-muted-foreground">{trendDescription}</p>
             </div>
-            <ToggleGroup
-              type="single"
-              value={trendMode}
-              onValueChange={(value) => {
-                if (value === 'hour' || value === 'day' || value === 'month') {
-                  setTrendMode(value);
-                }
-              }}
-              className="inline-flex w-full justify-start gap-1 rounded-full border border-border bg-muted/50 p-1 sm:w-auto"
-            >
-              <ToggleGroupItem
-                value="hour"
-                className="rounded-full px-3 text-[11px] data-[state=on]:bg-background sm:text-xs"
+            <div className="flex w-full flex-col gap-3 xl:w-auto xl:items-end">
+              <ToggleGroup
+                type="single"
+                value={trendMode}
+                onValueChange={(value) => {
+                  if (value === 'hour' || value === 'day' || value === 'month') {
+                    setTrendMode(value);
+                  }
+                }}
+                className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-border bg-muted/60 p-1 xl:w-[260px]"
               >
-                Jam
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="day"
-                className="rounded-full px-3 text-[11px] data-[state=on]:bg-background sm:text-xs"
-              >
-                Hari
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="month"
-                className="rounded-full px-3 text-[11px] data-[state=on]:bg-background sm:text-xs"
-              >
-                Bulan
-              </ToggleGroupItem>
-            </ToggleGroup>
+                <ToggleGroupItem
+                  value="hour"
+                  className="rounded-xl px-3 py-2 text-xs font-semibold data-[state=on]:bg-emerald-500 data-[state=on]:text-white"
+                >
+                  Jam
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="day"
+                  className="rounded-xl px-3 py-2 text-xs font-semibold data-[state=on]:bg-teal-500 data-[state=on]:text-white"
+                >
+                  Hari
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="month"
+                  className="rounded-xl px-3 py-2 text-xs font-semibold data-[state=on]:bg-sky-500 data-[state=on]:text-white"
+                >
+                  Bulan
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <div className="grid w-full grid-cols-2 gap-2 xl:w-[260px]">
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/6 px-3 py-2">
+                  <p className="text-xs font-medium text-emerald-600">Pemasukan</p>
+                  <p className="text-sm font-semibold text-foreground">{formatCurrency(totalIncome)}</p>
+                </div>
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/6 px-3 py-2">
+                  <p className="text-xs font-medium text-rose-500">Pengeluaran</p>
+                  <p className="text-sm font-semibold text-foreground">{formatCurrency(totalExpenses)}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col">
@@ -210,9 +223,9 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="h-[250px] sm:h-[300px]">
+            <div className="h-[260px] sm:h-[310px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart data={data} margin={{ top: 12, right: 12, left: -12, bottom: 6 }}>
                   <defs>
                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
@@ -227,19 +240,21 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
                   <XAxis 
                     dataKey="label" 
                     className="text-xs"
-                    tick={{ fill: 'var(--foreground)', fontSize: 11, fontWeight: 500 }}
+                    tick={{ fill: 'var(--foreground)', fontSize: 12, fontWeight: 600 }}
                     axisLine={{ stroke: 'var(--border)' }}
                     tickLine={{ stroke: 'var(--border)' }}
                     interval={trendMode === 'hour' ? 3 : trendMode === 'day' ? 4 : 0}
                     minTickGap={trendMode === 'month' ? 12 : 8}
+                    tickMargin={8}
+                    height={40}
                   />
                   <YAxis 
                     className="text-xs"
-                    tick={{ fill: 'var(--foreground)', fontSize: 11, fontWeight: 500 }}
+                    tick={{ fill: 'var(--foreground)', fontSize: 12, fontWeight: 600 }}
                     axisLine={{ stroke: 'var(--border)' }}
                     tickLine={{ stroke: 'var(--border)' }}
                     tickFormatter={(value) => `${(value / 1000000).toFixed(0)}jt`}
-                    width={52}
+                    width={58}
                   />
                   <Tooltip 
                     content={<CustomAreaTooltip />}
@@ -273,9 +288,9 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
 }
 
 export function CategoryChart({ month, year }: { month: number; year: number }) {
-  const [showIncomeCategories, setShowIncomeCategories] = useState(false);
-  const activeType = showIncomeCategories ? 'income' : 'expense';
-  const activeLabel = showIncomeCategories ? 'Pemasukan' : 'Pengeluaran';
+  const [activeType, setActiveType] = useState<'income' | 'expense'>('expense');
+  const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
+  const activeLabel = activeType === 'income' ? 'Pemasukan' : 'Pengeluaran';
   const { data, isLoading } = useCategorySpending(month, year, activeType);
   const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
     month: 'long',
@@ -289,38 +304,39 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
       transition={{ delay: 0.3 }}
       className="h-full"
     >
-      <Card className="flex h-full min-h-[390px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[430px]">
-        <CardHeader className="flex-shrink-0 gap-3 pb-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex h-full min-h-[410px] flex-col overflow-hidden border-0 bg-card shadow-lg sm:min-h-[440px]">
+        <CardHeader className="flex-shrink-0 gap-4 pb-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+              <CardTitle className="text-base font-semibold text-foreground">
                 {activeLabel} per Kategori
               </CardTitle>
-              <p className="text-xs text-muted-foreground">{selectedLabel}</p>
+              <p className="text-sm text-muted-foreground">{selectedLabel}</p>
             </div>
-            <div className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-muted/50 px-3 py-1.5 sm:self-auto">
-              <span
-                className={cn(
-                  'text-[11px] font-medium sm:text-xs',
-                  !showIncomeCategories ? 'text-foreground' : 'text-muted-foreground'
-                )}
+            <ToggleGroup
+              type="single"
+              value={activeType}
+              onValueChange={(value) => {
+                if (value === 'income' || value === 'expense') {
+                  setActiveCategoryIndex(null);
+                  setActiveType(value);
+                }
+              }}
+              className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-border bg-muted/60 p-1 xl:w-[280px]"
+            >
+              <ToggleGroupItem
+                value="expense"
+                className="rounded-xl px-3 py-2 text-xs font-semibold data-[state=on]:bg-rose-500 data-[state=on]:text-white"
               >
                 Pengeluaran
-              </span>
-              <Switch
-                checked={showIncomeCategories}
-                onCheckedChange={setShowIncomeCategories}
-                aria-label="Ubah kategori chart ke pemasukan"
-              />
-              <span
-                className={cn(
-                  'text-[11px] font-medium sm:text-xs',
-                  showIncomeCategories ? 'text-foreground' : 'text-muted-foreground'
-                )}
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="income"
+                className="rounded-xl px-3 py-2 text-xs font-semibold data-[state=on]:bg-emerald-500 data-[state=on]:text-white"
               >
                 Pemasukan
-              </span>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
@@ -346,6 +362,8 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
                       label={renderCustomizedLabel}
                       animationBegin={0}
                       animationDuration={800}
+                      onMouseEnter={(_, index) => setActiveCategoryIndex(index)}
+                      onMouseLeave={() => setActiveCategoryIndex(null)}
                     >
                       {data?.map((entry, index) => (
                         <Cell 
@@ -353,6 +371,7 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
                           fill={entry.color}
                           stroke="hsl(var(--card))"
                           strokeWidth={2}
+                          fillOpacity={activeCategoryIndex === null || activeCategoryIndex === index ? 1 : 0.35}
                         />
                       ))}
                     </Pie>
@@ -364,9 +383,19 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
               <div className="mt-2 max-h-[120px] overflow-y-auto pr-1 sm:max-h-[136px]">
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {data?.slice(0, 8).map((item, index) => (
-                    <motion.div 
+                    <motion.button 
                       key={index} 
-                      className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 transition-colors hover:bg-muted"
+                      type="button"
+                      onMouseEnter={() => setActiveCategoryIndex(index)}
+                      onMouseLeave={() => setActiveCategoryIndex(null)}
+                      onFocus={() => setActiveCategoryIndex(index)}
+                      onBlur={() => setActiveCategoryIndex(null)}
+                      className={cn(
+                        'flex items-center gap-2 rounded-xl border p-2.5 text-left transition-all',
+                        activeCategoryIndex === index
+                          ? 'border-primary/30 bg-primary/8 shadow-sm'
+                          : 'border-transparent bg-muted/50 hover:border-border hover:bg-muted'
+                      )}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
@@ -375,9 +404,9 @@ export function CategoryChart({ month, year }: { month: number; year: number }) 
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
                         style={{ backgroundColor: item.color }}
                       />
-                      <span className="flex-1 truncate text-xs text-muted-foreground">{item.category}</span>
+                      <span className="flex-1 truncate text-sm text-muted-foreground">{item.category}</span>
                       <span className="text-xs font-bold text-amber-500">{item.percentage?.toFixed(0)}%</span>
-                    </motion.div>
+                    </motion.button>
                   ))}
                 </div>
               </div>

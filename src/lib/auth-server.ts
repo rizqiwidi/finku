@@ -5,6 +5,8 @@ import prisma from './db';
 import { getJwtSecret } from './env';
 
 export const AUTH_COOKIE_NAME = 'auth-token';
+export const AUTH_SESSION_MAX_AGE_SECONDS = 4 * 60 * 60;
+export const AUTH_SESSION_MAX_AGE_LABEL = '4h';
 
 const authUserSelect = {
   id: true,
@@ -38,7 +40,7 @@ export async function createAuthToken(user: Pick<AuthUser, 'id' | 'username' | '
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime(AUTH_SESSION_MAX_AGE_LABEL)
     .sign(getJwtSecret());
 }
 

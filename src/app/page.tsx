@@ -265,7 +265,12 @@ export default function Home() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden text-muted-foreground hover:text-foreground"
+                  className={cn(
+                    'lg:hidden',
+                    mobileMenuOpen
+                      ? 'text-rose-500 hover:bg-rose-500/10 hover:text-rose-600'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 >
                   {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -333,10 +338,13 @@ export default function Home() {
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="gap-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                  className={cn(
+                    'gap-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10',
+                    sidebarOpen ? 'lg:hidden' : ''
+                  )}
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Logout</span>
+                  <span className="hidden sm:inline">Keluar</span>
                 </Button>
               </div>
             </div>
@@ -358,22 +366,17 @@ export default function Home() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 }}
-                  className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/88 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/88 p-3 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <div className="rounded-xl bg-primary/10 p-2 text-primary">
                       <CalendarRange className="h-4 w-4" />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-foreground">Filter Dashboard</p>
-                      <p className="text-xs text-muted-foreground">
-                        Berlaku untuk summary, anggaran, tren, pie chart, dan transaksi terbaru.
-                      </p>
-                    </div>
+                    <p className="text-sm font-semibold text-foreground">Filter Dashboard</p>
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="grid grid-cols-2 gap-2 md:flex">
                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                      <SelectTrigger className="h-9 min-w-[150px] bg-background/80">
+                      <SelectTrigger className="h-10 min-w-[160px] bg-background/80">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -385,7 +388,7 @@ export default function Home() {
                       </SelectContent>
                     </Select>
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger className="h-9 min-w-[112px] bg-background/80">
+                      <SelectTrigger className="h-10 min-w-[120px] bg-background/80">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -407,7 +410,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end"
+                  className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end"
                 >
                   <ExcelUpload />
                   <ReceiptScanDialog />

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { parseTransactionDateValue } from '@/lib/date-input';
 
 export async function GET(
   request: Request,
@@ -53,6 +54,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const { amount, description, categoryId, date, notes } = body;
+    const parsedDate = parseTransactionDateValue(date);
 
     const existingTransaction = await prisma.transaction.findFirst({
       where: {
@@ -83,6 +85,13 @@ export async function PUT(
       );
     }
 
+    if (!parsedDate) {
+      return NextResponse.json(
+        { error: 'Tanggal transaksi tidak valid' },
+        { status: 400 }
+      );
+    }
+
     const transaction = await prisma.transaction.update({
       where: { id },
       data: {
@@ -90,7 +99,7 @@ export async function PUT(
         description,
         categoryId,
         type: category.type,
-        date: new Date(date),
+        date: parsedDate,
         notes: notes || null,
       },
       include: {

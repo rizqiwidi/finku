@@ -33,9 +33,12 @@ import {
 } from '@/components/ui/select';
 import { useCategories, useCreateTransaction } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateInputValue } from '@/lib/date-input';
 import {
   findCategoryIdFromDescription,
   findMatchingCategoryId,
+  sanitizeSuggestedTransactionDraftInput,
+  suggestedTransactionDraftSchema,
   type SuggestedTransactionDraft,
 } from '@/lib/transaction-drafts';
 import type { Category, TransactionType } from '@/types';
@@ -43,27 +46,35 @@ import type { Category, TransactionType } from '@/types';
 const MAX_OCR_UPLOAD_BYTES = 6 * 1024 * 1024;
 const MAX_RECEIPT_IMAGE_BYTES = 15 * 1024 * 1024;
 const MAX_RECEIPT_EDGE = 1800;
+const MAX_RECEIPT_FILES = 5;
 
 interface PreparedReceiptFile {
+  id: string;
   file: File;
   fallbackFile?: File | null;
   originalName: string;
-  originalSize: number;
   uploadSize: number;
   mode: 'image-optimized' | 'image-original' | 'pdf';
 }
 
-function formatDateInput(value?: string | null) {
-  if (!value) {
-    return new Date().toISOString().slice(0, 10);
-  }
+interface LocalReceiptDraft extends SuggestedTransactionDraft {
+  categoryId?: string | null;
+  receiptId: string;
+  receiptLabel: string;
+  itemIndex: number;
+  itemCount: number;
+}
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return new Date().toISOString().slice(0, 10);
-  }
+interface ReceiptScanResponse {
+  error?: string;
+  draft?: SuggestedTransactionDraft | null;
+  drafts?: SuggestedTransactionDraft[];
+  parsedText?: string;
+  summary?: string | null;
+}
 
-  return date.toISOString().slice(0, 10);
+function createReceiptAssetId(file: File) {
+  return `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function formatFileSize(bytes: number) {
@@ -77,6 +88,40 @@ function formatFileSize(bytes: number) {
   }
 
   return `${(kilobytes / 1024).toFixed(1)} MB`;
+}
+
+function resolveDraftCategoryId(categories: Category[], draft: SuggestedTransactionDraft) {
+  const descriptionContext = [draft.description, draft.merchantName, draft.notes].filter(Boolean).join(' ');
+  const descriptionMatch = findCategoryIdFromDescription(categories, draft.type, descriptionContext);
+  const categoryNameMatch = draft.categoryName?.trim()
+    ? findMatchingCategoryId(categories, draft.type, draft.categoryName, null)
+    : null;
+
+  if (descriptionMatch && categoryNameMatch && descriptionMatch !== categoryNameMatch) {
+    return descriptionMatch;
+  }
+
+  return (
+    descriptionMatch ??
+    categoryNameMatch ??
+    findMatchingCategoryId(categories, draft.type, draft.categoryName, descriptionContext)
+  );
+}
+
+function toLocalReceiptDraft(
+  draft: SuggestedTransactionDraft,
+  categories: Category[],
+  metadata: Pick<LocalReceiptDraft, 'receiptId' | 'receiptLabel' | 'itemIndex' | 'itemCount'>
+) {
+  const normalizedDraft = suggestedTransactionDraftSchema.parse(
+    sanitizeSuggestedTransactionDraftInput(draft)
+  );
+
+  return {
+    ...normalizedDraft,
+    categoryId: resolveDraftCategoryId(categories, normalizedDraft),
+    ...metadata,
+  } satisfies LocalReceiptDraft;
 }
 
 async function optimizeReceiptImage(file: File) {
@@ -120,10 +165,7 @@ async function optimizeReceiptImage(file: File) {
     }
     context.putImageData(imageData, 0, 0);
 
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', 0.68)
-    );
-
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.68));
     if (!blob) {
       throw new Error('Gagal menyiapkan gambar hasil kompresi.');
     }
@@ -138,51 +180,123 @@ async function optimizeReceiptImage(file: File) {
       file: optimizedFile,
       fallbackFile: file,
       originalName: file.name,
-      originalSize: file.size,
       uploadSize: optimizedFile.size,
       mode: 'image-optimized',
-    } satisfies PreparedReceiptFile;
+    } satisfies Omit<PreparedReceiptFile, 'id'>;
   } finally {
     URL.revokeObjectURL(imageUrl);
   }
 }
 
+async function prepareReceiptFile(file: File) {
+  const receiptId = createReceiptAssetId(file);
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+  if (isPdf) {
+    if (file.size > MAX_OCR_UPLOAD_BYTES) {
+      throw new Error('Gunakan file PDF dengan ukuran maksimal 6MB.');
+    }
+
+    return {
+      id: receiptId,
+      file,
+      fallbackFile: file,
+      originalName: file.name,
+      uploadSize: file.size,
+      mode: 'pdf',
+    } satisfies PreparedReceiptFile;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Gunakan gambar struk atau PDF.');
+  }
+
+  if (file.size > MAX_RECEIPT_IMAGE_BYTES) {
+    throw new Error('Gunakan gambar struk dengan ukuran maksimal 15MB sebelum optimasi.');
+  }
+
+  try {
+    const optimizedFile = await optimizeReceiptImage(file);
+
+    if (optimizedFile.uploadSize > MAX_OCR_UPLOAD_BYTES) {
+      if (file.size <= MAX_OCR_UPLOAD_BYTES) {
+        return {
+          id: receiptId,
+          file,
+          fallbackFile: file,
+          originalName: file.name,
+          uploadSize: file.size,
+          mode: 'image-original',
+        } satisfies PreparedReceiptFile;
+      }
+
+      throw new Error('Gunakan foto struk yang lebih fokus atau potong area yang tidak perlu.');
+    }
+
+    return {
+      id: receiptId,
+      ...optimizedFile,
+    } satisfies PreparedReceiptFile;
+  } catch (error) {
+    if (file.size <= MAX_OCR_UPLOAD_BYTES) {
+      return {
+        id: receiptId,
+        file,
+        fallbackFile: file,
+        originalName: file.name,
+        uploadSize: file.size,
+        mode: 'image-original',
+      } satisfies PreparedReceiptFile;
+    }
+
+    throw error;
+  }
+}
+
 export function ReceiptScanDialog() {
   const [open, setOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [preparedFile, setPreparedFile] = useState<PreparedReceiptFile | null>(null);
+  const [preparedFiles, setPreparedFiles] = useState<PreparedReceiptFile[]>([]);
   const [prepareLoading, setPrepareLoading] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
-  const [draft, setDraft] = useState<SuggestedTransactionDraft | null>(null);
-  const [parsedText, setParsedText] = useState('');
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [scanSummary, setScanSummary] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<LocalReceiptDraft[]>([]);
+  const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(formatDateInputValue());
   const [notes, setNotes] = useState('');
   const { data: categories } = useCategories();
   const createMutation = useCreateTransaction();
   const { toast } = useToast();
 
+  const activeDraft = drafts[activeDraftIndex] ?? null;
   const filteredCategories = useMemo(
     () => (categories ?? []).filter((category) => category.type === type),
     [categories, type]
   );
+  const isBusy = prepareLoading || scanLoading || createMutation.isPending || isSavingAll;
 
-  const resetState = () => {
-    setFile(null);
-    setPreparedFile(null);
-    setPrepareLoading(false);
-    setScanLoading(false);
-    setDraft(null);
-    setParsedText('');
+  const resetEditor = () => {
     setType('expense');
     setAmount('');
     setDescription('');
     setCategoryId('');
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(formatDateInputValue());
     setNotes('');
+  };
+
+  const resetState = () => {
+    setPreparedFiles([]);
+    setPrepareLoading(false);
+    setScanLoading(false);
+    setIsSavingAll(false);
+    setScanSummary(null);
+    setDrafts([]);
+    setActiveDraftIndex(0);
+    resetEditor();
   };
 
   useEffect(() => {
@@ -192,147 +306,154 @@ export function ReceiptScanDialog() {
   }, [open]);
 
   useEffect(() => {
-    if (!draft || !(categories && categories.length > 0)) {
+    if (!activeDraft || !(categories && categories.length > 0)) {
       return;
     }
 
-    const mappedCategories = categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      type: category.type,
-    }));
-    const descriptionMatch = findCategoryIdFromDescription(mappedCategories, type, `${description} ${notes}`);
-    const categoryNameMatch = draft.categoryName?.trim()
-      ? findMatchingCategoryId(mappedCategories, type, draft.categoryName, null)
-      : null;
+    if (categoryId && filteredCategories.some((category) => category.id === categoryId)) {
+      return;
+    }
+
     const matchedCategoryId =
-      (descriptionMatch && categoryNameMatch && descriptionMatch !== categoryNameMatch
-        ? descriptionMatch
-        : descriptionMatch ?? categoryNameMatch) ??
+      resolveDraftCategoryId(categories, {
+        ...activeDraft,
+        type,
+        description,
+        notes,
+      }) ??
       filteredCategories[0]?.id ??
       '';
 
-    setCategoryId((current) => {
-      if (current && filteredCategories.some((category) => category.id === current)) {
-        return current;
-      }
+    if (matchedCategoryId) {
+      setCategoryId(matchedCategoryId);
+    }
+  }, [activeDraft, categories, categoryId, description, filteredCategories, notes, type]);
 
-      return matchedCategoryId;
-    });
-  }, [categories, description, draft, filteredCategories, notes, type]);
-
-  const handleFileChange = async (selectedFile: File | null) => {
-    if (!selectedFile) {
+  const applyDraft = (index: number, nextDrafts = drafts) => {
+    const draft = nextDrafts[index];
+    if (!draft) {
       return;
     }
 
-    setFile(null);
-    setPreparedFile(null);
-    setDraft(null);
-    setParsedText('');
+    setActiveDraftIndex(index);
+    setType(draft.type ?? 'expense');
+    setAmount(draft.amount ? String(draft.amount) : '');
+    setDescription(draft.description ?? draft.merchantName ?? '');
+    setCategoryId(draft.categoryId ?? resolveDraftCategoryId(categories ?? [], draft) ?? '');
+    setDate(formatDateInputValue(draft.date));
+    setNotes(draft.notes ?? '');
+  };
 
-    const isPdf =
-      selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+  const buildActiveDraft = (currentDraft?: LocalReceiptDraft | null) => {
+    const selectedCategory = (categories ?? []).find((category) => category.id === categoryId);
+    const parsedAmount = Number(amount.replace(/[^\d]/g, ''));
 
-    if (isPdf) {
-      if (selectedFile.size > MAX_OCR_UPLOAD_BYTES) {
-        toast({
-          title: 'File PDF terlalu besar',
-          description: 'Gunakan file PDF dengan ukuran maksimal 6MB.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    const nextDraft = suggestedTransactionDraftSchema.parse(
+      sanitizeSuggestedTransactionDraftInput({
+        type,
+        amount: parsedAmount > 0 ? parsedAmount : null,
+        description: description.trim() || currentDraft?.merchantName || null,
+        categoryName: selectedCategory?.name ?? currentDraft?.categoryName ?? null,
+        date,
+        notes: notes.trim() || null,
+        merchantName: currentDraft?.merchantName ?? null,
+        confidence: currentDraft?.confidence ?? null,
+        reasoning: currentDraft?.reasoning ?? null,
+      })
+    );
 
-      setPreparedFile({
-        file: selectedFile,
-        fallbackFile: selectedFile,
-        originalName: selectedFile.name,
-        originalSize: selectedFile.size,
-        uploadSize: selectedFile.size,
-        mode: 'pdf',
-      });
-      setFile(selectedFile);
+    return {
+      ...currentDraft,
+      ...nextDraft,
+      categoryId: categoryId || null,
+    } satisfies LocalReceiptDraft;
+  };
+
+  const syncDraftsFromEditor = () => {
+    if (!activeDraft) {
+      return drafts;
+    }
+
+    const nextDraft = buildActiveDraft(activeDraft);
+    const snapshot = drafts.map((draft, index) => (index === activeDraftIndex ? nextDraft : draft));
+    setDrafts(snapshot);
+    return snapshot;
+  };
+
+  const handleTypeChange = (nextType: TransactionType) => {
+    setType(nextType);
+
+    const isCurrentCategoryValid = (categories ?? []).some(
+      (category) => category.id === categoryId && category.type === nextType
+    );
+    if (isCurrentCategoryValid) {
       return;
     }
 
-    if (!selectedFile.type.startsWith('image/')) {
+    const currentDraft = activeDraft ? buildActiveDraft(activeDraft) : null;
+    const nextCategoryId =
+      (currentDraft
+        ? resolveDraftCategoryId(categories ?? [], {
+            ...currentDraft,
+            type: nextType,
+          })
+        : null) ??
+      (categories ?? []).find((category) => category.type === nextType)?.id ??
+      '';
+
+    setCategoryId(nextCategoryId);
+  };
+
+  const handleFilesChange = async (selectedFiles: FileList | null) => {
+    if (!selectedFiles?.length) {
+      return;
+    }
+
+    const remainingSlots = MAX_RECEIPT_FILES - preparedFiles.length;
+    if (remainingSlots <= 0) {
       toast({
-        title: 'Format file belum didukung',
-        description: 'Gunakan gambar struk atau PDF.',
+        title: 'Batas file tercapai',
+        description: `Maksimal ${MAX_RECEIPT_FILES} struk per proses scan.`,
         variant: 'destructive',
       });
       return;
     }
 
-    if (selectedFile.size > MAX_RECEIPT_IMAGE_BYTES) {
+    const incomingFiles = Array.from(selectedFiles).slice(0, remainingSlots);
+    if (selectedFiles.length > remainingSlots) {
       toast({
-        title: 'Gambar terlalu besar',
-        description: 'Gunakan gambar struk dengan ukuran maksimal 15MB sebelum optimasi.',
-        variant: 'destructive',
+        title: 'Sebagian file dilewati',
+        description: `Hanya ${remainingSlots} file tambahan yang bisa dimasukkan.`,
       });
-      return;
     }
 
     setPrepareLoading(true);
     try {
-      const optimizedFile = await optimizeReceiptImage(selectedFile);
+      const nextPreparedFiles: PreparedReceiptFile[] = [];
 
-      if (optimizedFile.uploadSize > MAX_OCR_UPLOAD_BYTES) {
-        if (selectedFile.size <= MAX_OCR_UPLOAD_BYTES) {
-          setPreparedFile({
-            file: selectedFile,
-            fallbackFile: selectedFile,
-            originalName: selectedFile.name,
-            originalSize: selectedFile.size,
-            uploadSize: selectedFile.size,
-            mode: 'image-original',
-          });
-          setFile(selectedFile);
+      for (const file of incomingFiles) {
+        try {
+          nextPreparedFiles.push(await prepareReceiptFile(file));
+        } catch (error) {
           toast({
-            title: 'Optimasi dilewati',
-            description: 'File asli dipakai karena hasil kompresi tidak cukup kecil untuk OCR.',
+            title: `Gagal menyiapkan ${file.name}`,
+            description:
+              error instanceof Error ? error.message : 'Gunakan file lain yang lebih jelas.',
+            variant: 'destructive',
           });
-          return;
         }
-
-        toast({
-          title: 'Hasil optimasi masih terlalu besar',
-          description: 'Gunakan foto struk yang lebih fokus atau potong area yang tidak perlu.',
-          variant: 'destructive',
-        });
-        return;
       }
 
-      setPreparedFile(optimizedFile);
-      setFile(optimizedFile.file);
-    } catch (error) {
-      if (selectedFile.size <= MAX_OCR_UPLOAD_BYTES) {
-        setPreparedFile({
-          file: selectedFile,
-          fallbackFile: selectedFile,
-          originalName: selectedFile.name,
-          originalSize: selectedFile.size,
-          uploadSize: selectedFile.size,
-          mode: 'image-original',
-        });
-        setFile(selectedFile);
-        toast({
-          title: 'Optimasi gambar dilewati',
-          description: 'File asli tetap dipakai agar scan struk bisa dicoba langsung.',
-        });
-        return;
+      if (nextPreparedFiles.length > 0) {
+        setPreparedFiles((current) => [...current, ...nextPreparedFiles]);
       }
-
-      toast({
-        title: 'Gagal menyiapkan gambar struk',
-        description:
-          error instanceof Error ? error.message : 'Coba gunakan foto struk lain yang lebih jelas.',
-        variant: 'destructive',
-      });
     } finally {
       setPrepareLoading(false);
     }
+  };
+
+  const removePreparedFile = (fileId: string) => {
+    setPreparedFiles((current) => current.filter((item) => item.id !== fileId));
   };
 
   const submitReceiptScan = async (scanFile: File) => {
@@ -345,10 +466,10 @@ export function ReceiptScanDialog() {
     });
 
     const rawText = await response.text();
-    let data: { error?: string; draft?: SuggestedTransactionDraft; parsedText?: string } = {};
+    let data: ReceiptScanResponse = {};
 
     try {
-      data = rawText ? JSON.parse(rawText) : {};
+      data = rawText ? (JSON.parse(rawText) as ReceiptScanResponse) : {};
     } catch {
       data = {};
     }
@@ -357,7 +478,7 @@ export function ReceiptScanDialog() {
       throw new Error(
         data.error ||
           (rawText.includes('<!DOCTYPE') || rawText.includes('<html')
-            ? 'Server scan struk di production gagal sebelum mengirim respons JSON. Cek env OCR_SPACE_API_KEY dan log function Vercel.'
+            ? 'Server scan struk gagal sebelum mengirim respons JSON. Cek env OCR dan log deployment.'
             : 'Gagal memindai struk.')
       );
     }
@@ -365,11 +486,37 @@ export function ReceiptScanDialog() {
     return data;
   };
 
+  const scanPreparedFile = async (preparedFile: PreparedReceiptFile) => {
+    try {
+      return await submitReceiptScan(preparedFile.file);
+    } catch (primaryError) {
+      if (preparedFile.mode !== 'image-optimized' || !preparedFile.fallbackFile) {
+        throw primaryError;
+      }
+
+      const fallbackResponse = await submitReceiptScan(preparedFile.fallbackFile);
+      setPreparedFiles((current) =>
+        current.map((item) =>
+          item.id === preparedFile.id
+            ? {
+                ...item,
+                file: preparedFile.fallbackFile as File,
+                fallbackFile: preparedFile.fallbackFile,
+                uploadSize: preparedFile.fallbackFile?.size ?? item.uploadSize,
+                mode: 'image-original',
+              }
+            : item
+        )
+      );
+      return fallbackResponse;
+    }
+  };
+
   const handleScan = async () => {
-    if (!file) {
+    if (preparedFiles.length === 0) {
       toast({
-        title: 'File belum dipilih',
-        description: 'Pilih foto struk atau PDF terlebih dahulu.',
+        title: 'Struk belum dipilih',
+        description: 'Pilih minimal satu struk sebelum memulai scan.',
         variant: 'destructive',
       });
       return;
@@ -377,52 +524,58 @@ export function ReceiptScanDialog() {
 
     setScanLoading(true);
     try {
-      let data;
+      const collectedDrafts: LocalReceiptDraft[] = [];
+      const summaryParts: string[] = [];
+      const failedFiles: string[] = [];
 
-      try {
-        data = await submitReceiptScan(file);
-      } catch (primaryError) {
-        const retryFile =
-          preparedFile?.mode === 'image-optimized' && preparedFile.fallbackFile
-            ? preparedFile.fallbackFile
-            : null;
+      for (const preparedFile of preparedFiles) {
+        try {
+          const response = await scanPreparedFile(preparedFile);
+          const responseDrafts =
+            Array.isArray(response.drafts) && response.drafts.length > 0
+              ? response.drafts
+              : response.draft
+                ? [response.draft]
+                : [];
 
-        if (!retryFile) {
-          throw primaryError;
+          const mappedDrafts = responseDrafts.map((draft, index) =>
+            toLocalReceiptDraft(draft, categories ?? [], {
+              receiptId: preparedFile.id,
+              receiptLabel: preparedFile.originalName,
+              itemIndex: index,
+              itemCount: responseDrafts.length,
+            })
+          );
+
+          if (mappedDrafts.length > 0) {
+            collectedDrafts.push(...mappedDrafts);
+          }
+
+          summaryParts.push(
+            response.summary?.trim()
+              ? `${preparedFile.originalName}: ${response.summary.trim()}`
+              : `${preparedFile.originalName}: ${responseDrafts.length} item`
+          );
+        } catch (error) {
+          console.error('Receipt scan failed:', error);
+          failedFiles.push(preparedFile.originalName);
         }
-
-        data = await submitReceiptScan(retryFile);
-        setPreparedFile((current) =>
-          current
-            ? {
-                ...current,
-                file: retryFile,
-                fallbackFile: retryFile,
-                uploadSize: retryFile.size,
-                mode: 'image-original',
-              }
-            : current
-        );
-        setFile(retryFile);
-
-        toast({
-          title: 'Scan memakai file asli',
-          description: 'Versi kompresi gagal dibaca OCR, jadi sistem otomatis mencoba file asli.',
-        });
       }
 
-      const nextDraft = data.draft as SuggestedTransactionDraft;
-      setDraft(nextDraft);
-      setParsedText(data.parsedText ?? '');
-      setType(nextDraft.type ?? 'expense');
-      setAmount(nextDraft.amount ? String(nextDraft.amount) : '');
-      setDescription(nextDraft.description ?? nextDraft.merchantName ?? '');
-      setDate(formatDateInput(nextDraft.date));
-      setNotes(nextDraft.notes ?? '');
+      if (collectedDrafts.length === 0) {
+        throw new Error('Tidak ada draft transaksi yang berhasil dihasilkan dari struk.');
+      }
+
+      setScanSummary(summaryParts.join(' | '));
+      setDrafts(collectedDrafts);
+      applyDraft(0, collectedDrafts);
 
       toast({
         title: 'Scan selesai',
-        description: 'Periksa hasil OCR sebelum menyimpan transaksi.',
+        description:
+          failedFiles.length > 0
+            ? `${collectedDrafts.length} draft siap direview. ${failedFiles.length} file gagal diproses.`
+            : `${collectedDrafts.length} draft siap direview.`,
       });
     } catch (error) {
       toast({
@@ -435,38 +588,162 @@ export function ReceiptScanDialog() {
     }
   };
 
-  const handleSave = async () => {
-    const numericAmount = Number(amount.replace(/[^\d]/g, ''));
-    if (!numericAmount || !description.trim() || !categoryId) {
+  const buildReceiptNotes = (draft: LocalReceiptDraft) => {
+    const resolvedCategoryName =
+      (categories ?? []).find((category) => category.id === draft.categoryId)?.name ??
+      draft.categoryName ??
+      'Tanpa kategori';
+    const baseLine = `${draft.receiptLabel} • item ${draft.itemIndex + 1}/${draft.itemCount} • ${resolvedCategoryName} • ${draft.description ?? draft.merchantName ?? 'Tanpa deskripsi'}`;
+    const extraNotes = draft.notes?.trim();
+
+    return extraNotes ? `${baseLine}\n${extraNotes}` : baseLine;
+  };
+
+  const preparePayload = (draft: LocalReceiptDraft) => {
+    const resolvedCategoryId = draft.categoryId ?? resolveDraftCategoryId(categories ?? [], draft);
+    const resolvedDescription = draft.description?.trim() || draft.merchantName?.trim() || '';
+    const resolvedAmount = draft.amount ?? 0;
+
+    if (!(resolvedAmount > 0)) {
+      return { error: 'Nominal draft masih kosong atau belum valid.' };
+    }
+
+    if (!resolvedDescription) {
+      return { error: 'Deskripsi draft masih kosong.' };
+    }
+
+    if (!resolvedCategoryId) {
+      return { error: 'Kategori draft belum berhasil dipetakan.' };
+    }
+
+    return {
+      data: {
+        amount: resolvedAmount,
+        description: resolvedDescription,
+        categoryId: resolvedCategoryId,
+        type: draft.type,
+        date: formatDateInputValue(draft.date),
+        notes: buildReceiptNotes(draft),
+      },
+    };
+  };
+
+  const handleDraftSelect = (index: number) => {
+    const snapshot = syncDraftsFromEditor();
+    applyDraft(index, snapshot);
+  };
+
+  const handleSaveActive = async () => {
+    const snapshot = syncDraftsFromEditor();
+    const currentDraft = snapshot[activeDraftIndex];
+    if (!currentDraft) {
+      return;
+    }
+
+    const preparedPayload = preparePayload(currentDraft);
+    if ('error' in preparedPayload) {
       toast({
-        title: 'Draft belum lengkap',
-        description: 'Nominal, deskripsi, dan kategori wajib diisi sebelum menyimpan.',
+        title: 'Draft perlu diperbaiki',
+        description: preparedPayload.error,
         variant: 'destructive',
       });
       return;
     }
 
     try {
-      await createMutation.mutateAsync({
-        amount: numericAmount,
-        description: description.trim(),
-        categoryId,
-        type,
-        date: new Date(date),
-        notes: notes.trim() || undefined,
-      });
+      await createMutation.mutateAsync(preparedPayload.data);
+
+      if (snapshot.length > 1) {
+        const remainingDrafts = snapshot.filter((_, index) => index !== activeDraftIndex);
+        setDrafts(remainingDrafts);
+        const nextIndex = Math.min(activeDraftIndex, remainingDrafts.length - 1);
+        applyDraft(nextIndex, remainingDrafts);
+        toast({
+          title: 'Draft tersimpan',
+          description: `${remainingDrafts.length} draft masih menunggu review.`,
+        });
+        return;
+      }
 
       toast({
         title: 'Transaksi ditambahkan',
-        description: 'Hasil scan struk berhasil disimpan sebagai transaksi baru.',
+        description: 'Hasil scan struk berhasil disimpan.',
       });
       setOpen(false);
-    } catch {
+    } catch (error) {
       toast({
         title: 'Gagal menyimpan transaksi',
-        description: 'Coba lagi setelah memeriksa data hasil scan.',
+        description:
+          error instanceof Error ? error.message : 'Coba lagi setelah memeriksa draft hasil scan.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleSaveAllDrafts = async () => {
+    const snapshot = syncDraftsFromEditor();
+    if (snapshot.length === 0) {
+      return;
+    }
+
+    const preparedDrafts = snapshot.map((draft, index) => ({
+      index,
+      prepared: preparePayload(draft),
+    }));
+
+    const invalidDraft = preparedDrafts.find(
+      (
+        item
+      ): item is {
+        index: number;
+        prepared: { error: string };
+      } => 'error' in item.prepared
+    );
+
+    if (invalidDraft) {
+      applyDraft(invalidDraft.index, snapshot);
+      toast({
+        title: `Draft ${invalidDraft.index + 1} perlu diperbaiki`,
+        description: invalidDraft.prepared.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingAll(true);
+    let successCount = 0;
+
+    try {
+      for (const item of preparedDrafts) {
+        if ('error' in item.prepared) {
+          continue;
+        }
+
+        await createMutation.mutateAsync(item.prepared.data);
+        successCount += 1;
+      }
+
+      toast({
+        title: 'Semua hasil scan tersimpan',
+        description: `${successCount} transaksi berhasil ditambahkan sekaligus.`,
+      });
+      setOpen(false);
+    } catch (error) {
+      const remainingDrafts = snapshot.slice(successCount);
+      setDrafts(remainingDrafts);
+      applyDraft(0, remainingDrafts);
+      toast({
+        title: successCount > 0 ? 'Sebagian hasil sudah tersimpan' : 'Gagal menyimpan hasil scan',
+        description:
+          successCount > 0
+            ? `${successCount} transaksi sudah masuk. Review draft sisanya lalu coba lagi.`
+            : error instanceof Error
+              ? error.message
+              : 'Terjadi kegagalan saat menyimpan hasil scan.',
+        variant: successCount > 0 ? 'default' : 'destructive',
+      });
+    } finally {
+      setIsSavingAll(false);
     }
   };
 
@@ -475,100 +752,158 @@ export function ReceiptScanDialog() {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
-          className="w-full border-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 transition-all duration-300 hover:scale-105 hover:from-amber-600 hover:to-orange-600 sm:w-auto"
+          className="h-11 w-full border-0 bg-gradient-to-r from-amber-500 to-orange-500 px-4 text-sm text-white shadow-lg shadow-amber-500/25 transition-all duration-300 hover:scale-105 hover:from-amber-600 hover:to-orange-600 sm:w-auto"
         >
           <FileScan className="mr-2 h-4 w-4" />
           Scan Struk
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
+      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
         <DialogHeader className="shrink-0 border-b border-border bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-5">
           <DialogTitle className="flex items-center gap-2 text-base">
             <ReceiptText className="h-4 w-4 text-amber-500" />
-            Scan Struk dengan OCR
+            Scan Struk
           </DialogTitle>
           <DialogDescription>
-            Unggah foto struk atau PDF, lalu review hasil OCR sebelum disimpan sebagai transaksi.
+            Tambahkan sampai {MAX_RECEIPT_FILES} struk, lalu review hasil per item sebelum disimpan.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          {!draft ? (
+        <div className="flex-1 overflow-y-auto p-5">
+          {drafts.length === 0 ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-center">
-                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
-                  <Upload className="h-7 w-7" />
+              <div className="rounded-3xl border border-dashed border-border bg-muted/30 p-5">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Unggah struk</p>
+                    <p className="text-xs text-muted-foreground">
+                      Maksimal {MAX_RECEIPT_FILES} file gambar atau PDF.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-foreground">Unggah foto struk atau PDF</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  OCR Space akan membaca teks struk, lalu Anda bisa meninjau hasilnya sebelum disimpan.
-                </p>
                 <Input
                   type="file"
                   accept="image/*,.pdf"
-                  className="mt-4"
-                  onChange={(event) => void handleFileChange(event.target.files?.[0] ?? null)}
+                  multiple
+                  className="h-11"
+                  onChange={(event) => {
+                    void handleFilesChange(event.target.files);
+                    event.currentTarget.value = '';
+                  }}
                 />
                 {prepareLoading ? (
                   <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Menyiapkan gambar di perangkat Anda...</span>
-                  </div>
-                ) : null}
-                {preparedFile ? (
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-xs text-muted-foreground">
-                    <Badge variant="secondary">{formatFileSize(preparedFile.uploadSize)}</Badge>
-                    <span className="max-w-[220px] truncate">{preparedFile.originalName}</span>
+                    <span>Menyiapkan file struk...</span>
                   </div>
                 ) : null}
               </div>
 
-              <div className="rounded-2xl border border-border bg-card/80 p-4 text-sm text-muted-foreground">
-                <div className="mb-2 flex items-center gap-2 text-foreground">
-                  <Sparkles className="h-4 w-4 text-amber-500" />
-                  Review sebelum simpan
-                </div>
-                Gambar struk akan dikompresi dan di-grayscale langsung di browser agar upload OCR lebih ringan. Setelah scan selesai, Anda bisa cek nominal, kategori, tanggal, deskripsi, lalu pilih simpan atau batal.
-              </div>
-
-              {preparedFile ? (
-                <div className="rounded-2xl border border-border bg-muted/25 p-4 text-xs text-muted-foreground">
+              {preparedFiles.length > 0 ? (
+                <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">
-                      Asal {formatFileSize(preparedFile.originalSize)}
-                    </Badge>
-                    <Badge variant="outline">
-                      Upload {formatFileSize(preparedFile.uploadSize)}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {preparedFile.mode === 'image-optimized'
-                        ? 'Grayscale + Compress'
-                        : preparedFile.mode === 'image-original'
-                          ? 'File Asli'
-                          : 'PDF langsung'}
-                    </Badge>
+                    <Badge variant="secondary">{preparedFiles.length} struk dipilih</Badge>
+                    <Badge variant="outline">Maks {MAX_RECEIPT_FILES} struk</Badge>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {preparedFiles.map((preparedFile) => (
+                      <div
+                        key={preparedFile.id}
+                        className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card/80 p-4"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {preparedFile.originalName}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <Badge variant="outline">{formatFileSize(preparedFile.uploadSize)}</Badge>
+                            <span>
+                              {preparedFile.mode === 'image-optimized'
+                                ? 'Gambar teroptimasi'
+                                : preparedFile.mode === 'image-original'
+                                  ? 'Gambar asli'
+                                  : 'PDF'}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                          onClick={() => removePreparedFile(preparedFile.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : null}
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">
-                  {type === 'income' ? 'Pemasukan' : type === 'savings' ? 'Tabungan' : 'Pengeluaran'}
-                </Badge>
-                {draft.confidence ? <Badge variant="outline">Confidence {draft.confidence}%</Badge> : null}
-                {draft.reasoning ? (
-                  <span className="text-xs text-muted-foreground">{draft.reasoning}</span>
+              <div className="space-y-3 rounded-3xl border border-border bg-card/75 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">{drafts.length} draft OCR</Badge>
+                  <Badge variant="outline">{preparedFiles.length} struk</Badge>
+                  <Badge variant="outline">
+                    Draft aktif {activeDraftIndex + 1}/{drafts.length}
+                  </Badge>
+                </div>
+                {scanSummary ? (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{scanSummary}</p>
                 ) : null}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {drafts.map((draft, index) => {
+                    const isActive = index === activeDraftIndex;
+                    const draftTypeLabel =
+                      draft.type === 'income'
+                        ? 'Pemasukan'
+                        : draft.type === 'savings'
+                          ? 'Tabungan'
+                          : 'Pengeluaran';
+
+                    return (
+                      <button
+                        key={`${draft.receiptId}-${index}`}
+                        type="button"
+                        onClick={() => handleDraftSelect(index)}
+                        className={
+                          isActive
+                            ? 'rounded-2xl border border-primary bg-primary/6 p-3 text-left shadow-sm transition-all'
+                            : 'rounded-2xl border border-border bg-card/60 p-3 text-left transition-all hover:border-primary/30'
+                        }
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <Badge variant={isActive ? 'default' : 'outline'}>{draftTypeLabel}</Badge>
+                          <span className="text-[11px] text-muted-foreground">
+                            Item {draft.itemIndex + 1}/{draft.itemCount}
+                          </span>
+                        </div>
+                        <p className="line-clamp-1 text-sm font-semibold text-foreground">
+                          {draft.description ?? draft.merchantName ?? `Draft ${index + 1}`}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {draft.amount ? `Rp ${draft.amount.toLocaleString('id-ID')}` : 'Nominal perlu dicek'}
+                        </p>
+                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                          {draft.receiptLabel}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Tipe Transaksi</Label>
-                  <Select value={type} onValueChange={(value) => setType(value as TransactionType)}>
-                    <SelectTrigger>
+                  <Select value={type} onValueChange={(value) => handleTypeChange(value as TransactionType)}>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -586,6 +921,7 @@ export function ReceiptScanDialog() {
                     value={amount}
                     onChange={(event) => setAmount(event.target.value.replace(/[^\d]/g, ''))}
                     placeholder="0"
+                    className="h-11"
                   />
                 </div>
 
@@ -595,13 +931,14 @@ export function ReceiptScanDialog() {
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     placeholder="Deskripsi transaksi"
+                    className="h-11"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label>Kategori</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Pilih kategori" />
                     </SelectTrigger>
                     <SelectContent>
@@ -622,70 +959,81 @@ export function ReceiptScanDialog() {
                       type="date"
                       value={date}
                       onChange={(event) => setDate(event.target.value)}
-                      className="pl-9"
+                      className="h-11 pl-9"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label>Catatan</Label>
+                <Label>Catatan Tambahan</Label>
                 <Textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Tambahkan catatan hasil scan"
-                  className="min-h-20 resize-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Hasil OCR Mentah</Label>
-                <Textarea
-                  value={parsedText}
-                  readOnly
-                  className="min-h-36 resize-none bg-muted/40 text-xs"
+                  placeholder="Tambahkan catatan tambahan bila perlu"
+                  className="min-h-24 resize-none"
                 />
               </div>
             </div>
           )}
         </div>
 
-        <div className="sticky bottom-0 flex gap-2 border-t border-border bg-background p-4">
-          {!draft ? (
-            <>
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>
-                <X className="mr-2 h-4 w-4" />
-                Batal
-              </Button>
-              <Button
-                type="button"
-                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
-                onClick={handleScan}
-                disabled={scanLoading || prepareLoading}
-              >
-                {scanLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileScan className="mr-2 h-4 w-4" />}
-                Proses Scan
-              </Button>
-            </>
+        <div className="sticky bottom-0 flex flex-col gap-2 border-t border-border bg-background p-4 sm:flex-row">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)} disabled={isBusy}>
+            <X className="mr-2 h-4 w-4 text-rose-500" />
+            Batal
+          </Button>
+
+          {drafts.length === 0 ? (
+            <Button
+              type="button"
+              className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
+              onClick={handleScan}
+              disabled={scanLoading || prepareLoading || preparedFiles.length === 0}
+            >
+              {scanLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileScan className="mr-2 h-4 w-4" />
+              )}
+              Proses Scan
+            </Button>
           ) : (
             <>
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>
-                <X className="mr-2 h-4 w-4" />
-                Batal
-              </Button>
               <Button
                 type="button"
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
-                onClick={handleSave}
-                disabled={createMutation.isPending}
+                variant={drafts.length > 1 ? 'outline' : 'default'}
+                className={
+                  drafts.length > 1
+                    ? 'flex-1'
+                    : 'flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600'
+                }
+                onClick={handleSaveActive}
+                disabled={createMutation.isPending || isSavingAll}
               >
                 {createMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
-                Tambah Transaksi
+                {drafts.length > 1 ? 'Tambah Draft Aktif' : 'Tambah Transaksi'}
               </Button>
+
+              {drafts.length > 1 ? (
+                <Button
+                  type="button"
+                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600"
+                  onClick={handleSaveAllDrafts}
+                  disabled={createMutation.isPending || isSavingAll}
+                >
+                  {isSavingAll ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Tambah Semua Hasil
+                </Button>
+              ) : null}
             </>
           )}
         </div>

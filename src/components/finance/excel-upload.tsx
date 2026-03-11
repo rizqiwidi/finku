@@ -432,8 +432,7 @@ export function ExcelUpload() {
       <DialogTrigger asChild>
         <Button 
           variant="outline" 
-          size="sm"
-          className="w-full gap-2 border-0 bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25 transition-all duration-300 hover:scale-105 hover:from-violet-600 hover:to-purple-600 sm:w-auto"
+          className="h-11 w-full gap-2 border-0 bg-gradient-to-r from-violet-500 to-purple-500 px-4 text-sm text-white shadow-lg shadow-violet-500/25 transition-all duration-300 hover:scale-105 hover:from-violet-600 hover:to-purple-600 sm:w-auto"
         >
           <Upload className="w-4 h-4" />
           Import File
@@ -638,7 +637,7 @@ export function ExcelUpload() {
                   variant="ghost"
                   onClick={resetUpload}
                   disabled={importing}
-                  className="flex-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  className="flex-1 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
                 >
                   <X className="w-4 h-4 mr-2" />
                   Batal
@@ -672,7 +671,12 @@ export function ExcelUpload() {
                 <p className="text-xs text-muted-foreground">Memproses...</p>
               </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={resetUpload} className="text-muted-foreground hover:text-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={resetUpload}
+                className="text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+              >
                 <X className="w-4 h-4" />
               </Button>
             </motion.div>

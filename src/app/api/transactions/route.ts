@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { parseTransactionDateValue } from '@/lib/date-input';
 
 export async function GET(request: Request) {
   try {
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
     const user = await requireAuthUser();
     const body = await request.json();
     const { amount, description, categoryId, type, date, notes } = body;
+    const parsedDate = parseTransactionDateValue(date);
 
     // Get category to ensure type matches
     const category = await prisma.category.findFirst({
@@ -86,13 +88,20 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!parsedDate) {
+      return NextResponse.json(
+        { error: 'Tanggal transaksi tidak valid' },
+        { status: 400 }
+      );
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         amount: parseFloat(amount),
         description,
         categoryId,
         type: type || category.type,
-        date: new Date(date),
+        date: parsedDate,
         notes: notes || null,
         userId: user.id,
       },

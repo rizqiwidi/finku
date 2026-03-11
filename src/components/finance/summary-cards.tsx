@@ -88,8 +88,8 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       description: 'Total pengeluaran bulan ini',
     },
     {
-      title: 'Total Tabungan',
-      value: summary?.totalSavings ?? summary?.savings ?? 0,
+      title: 'Tabungan Bulan Ini',
+      value: summary?.savings ?? summary?.totalSavings ?? 0,
       icon: PiggyBank,
       color: 'text-amber-500',
       tone: 'border-amber-500/20',
@@ -97,7 +97,7 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       accentBar: 'bg-amber-500',
       iconBg: 'bg-amber-100 dark:bg-amber-900/50',
       trend: 'neutral',
-      description: 'Tabungan bulan ini',
+      description: monthName,
     },
   ];
 

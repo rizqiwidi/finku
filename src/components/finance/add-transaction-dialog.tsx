@@ -29,6 +29,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCategories, useCreateTransaction, useUpdateTransaction } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { getCategoryIconComponent } from '@/lib/category-icons';
+import { formatDateInputValue, parseDateInputValue } from '@/lib/date-input';
 import {
   findCategoryIdFromDescription,
   findMatchingCategoryId,
@@ -64,28 +65,6 @@ interface AssistantResponse {
   drafts?: SuggestedTransactionDraft[];
   summary?: string | null;
   error?: string;
-}
-
-function formatDateInput(value?: Date | string | null) {
-  if (!value) {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  return date.toISOString().slice(0, 10);
-}
-
-function parseDateInput(value: string) {
-  const [year, month, day] = value.split('-').map((item) => Number(item));
-  if (!year || !month || !day) {
-    return new Date();
-  }
-
-  return new Date(year, month - 1, day, 12, 0, 0, 0);
 }
 
 const getDefaultFormValues = (): FormData => ({
@@ -142,7 +121,7 @@ function buildFormValuesFromDraft(draft: LocalAssistantDraft, categories: Catego
     amount: draft.amount ?? 0,
     description: draft.description ?? draft.merchantName ?? '',
     categoryId,
-    date: parseDateInput(formatDateInput(draft.date)),
+    date: parseDateInputValue(formatDateInputValue(draft.date)),
     notes: draft.notes ?? '',
   };
 }
@@ -159,7 +138,7 @@ function buildDraftFromForm(
       amount: values.amount > 0 ? values.amount : null,
       description: values.description.trim() || null,
       categoryName: selectedCategory?.name ?? currentDraft?.categoryName ?? null,
-      date: values.date.toISOString(),
+      date: formatDateInputValue(values.date),
       notes: values.notes?.trim() || null,
       merchantName: currentDraft?.merchantName ?? null,
       confidence: currentDraft?.confidence ?? null,
@@ -211,7 +190,7 @@ function prepareTransactionPayload(draft: LocalAssistantDraft, categories: Categ
       description,
       categoryId,
       type: draft.type,
-      date: draft.date ? new Date(draft.date) : new Date(),
+      date: draft.date ? formatDateInputValue(draft.date) : formatDateInputValue(),
       notes: draft.notes?.trim() || undefined,
     },
   };
@@ -616,7 +595,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
       description: data.description.trim(),
       categoryId: data.categoryId,
       type: data.type,
-      date: data.date,
+      date: formatDateInputValue(data.date),
       notes: data.notes?.trim() || undefined,
     };
 
@@ -746,8 +725,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
       {!isEditing ? (
         <DialogTrigger asChild>
           <Button
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-105 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/30 sm:w-auto"
-            size="sm"
+            className="h-11 w-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-105 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/30 sm:w-auto"
           >
             <Plus className="mr-1.5 h-4 w-4" />
             Tambah Transaksi
@@ -761,11 +739,9 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
             <Sparkles className="h-4 w-4 text-emerald-500" />
             {editTransaction ? 'Edit Transaksi' : 'Tambah Transaksi Baru'}
           </DialogTitle>
-          <DialogDescription>
-            {editTransaction
-              ? 'Perbarui detail transaksi yang sudah ada.'
-              : 'Pilih input manual atau biarkan AI memecah chat/suara Anda menjadi beberapa draft transaksi.'}
-          </DialogDescription>
+          {editTransaction ? (
+            <DialogDescription>Perbarui detail transaksi yang sudah ada.</DialogDescription>
+          ) : null}
         </DialogHeader>
 
         <form id="transaction-form" onSubmit={form.handleSubmit(handleSubmit)} className="flex min-h-0 flex-1 flex-col">
@@ -777,11 +753,7 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                   <TabsTrigger value="ai">Chat / Suara AI</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="manual" className="space-y-3">
-                  <div className="rounded-2xl border border-border bg-card/70 p-4 text-sm text-muted-foreground">
-                    Isi transaksi secara manual atau pindah ke tab AI jika ingin dibantu memecah beberapa transaksi sekaligus dari chat atau suara.
-                  </div>
-                </TabsContent>
+                <TabsContent value="manual" className="hidden" />
 
                 <TabsContent value="ai" className="space-y-4">
                   <div className="rounded-2xl border border-border bg-card/75 p-4">
@@ -874,9 +846,6 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                             >
                               <div className="mb-2 flex items-center justify-between gap-2">
                                 <Badge variant={isActive ? 'default' : 'outline'}>{draftTypeLabel}</Badge>
-                                {draft.confidence ? (
-                                  <span className="text-[11px] text-muted-foreground">{draft.confidence}%</span>
-                                ) : null}
                               </div>
                               <p className="line-clamp-1 text-sm font-semibold text-foreground">
                                 {draft.description ?? draft.merchantName ?? `Draft ${index + 1}`}
@@ -895,24 +864,6 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                   ) : null}
                 </TabsContent>
               </Tabs>
-            ) : null}
-
-            {inputMode === 'ai' && activeDraft ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card/75 p-3">
-                <Badge variant="secondary">
-                  {selectedType === 'income'
-                    ? 'Pemasukan'
-                    : selectedType === 'savings'
-                      ? 'Tabungan'
-                      : 'Pengeluaran'}
-                </Badge>
-                {activeDraft.confidence ? (
-                  <Badge variant="outline">Confidence {activeDraft.confidence}%</Badge>
-                ) : null}
-                {activeDraft.reasoning ? (
-                  <span className="text-xs text-muted-foreground">{activeDraft.reasoning}</span>
-                ) : null}
-              </div>
             ) : null}
 
             <div className="space-y-4">
@@ -1053,9 +1004,9 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                     <Input
                       id="date"
                       type="date"
-                      value={formatDateInput(watchedDate)}
+                      value={formatDateInputValue(watchedDate)}
                       onChange={(event) =>
-                        form.setValue('date', parseDateInput(event.target.value), {
+                        form.setValue('date', parseDateInputValue(event.target.value), {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1092,32 +1043,17 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                 Batal
               </Button>
 
-              {!isEditing && inputMode === 'ai' && assistantDrafts.length > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleSaveAllDrafts}
-                  disabled={isBusy}
-                >
-                  {isSavingAll ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
-                  )}
-                  Tambah Semua Draft
-                </Button>
-              ) : null}
-
               <Button
                 type="submit"
                 className={cn(
-                  'flex-1 text-white shadow-lg transition-all duration-300',
-                  selectedType === 'income'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600'
-                    : selectedType === 'savings'
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-                      : 'bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600'
+                  'flex-1 transition-all duration-300',
+                  !isEditing && inputMode === 'ai' && assistantDrafts.length > 1
+                    ? 'border border-border bg-background text-foreground hover:bg-muted'
+                    : selectedType === 'income'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:from-emerald-600 hover:to-teal-600'
+                      : selectedType === 'savings'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:from-amber-600 hover:to-orange-600'
+                        : 'bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-lg hover:from-rose-600 hover:to-red-600'
                 )}
                 disabled={isBusy || !canSubmit}
               >
@@ -1132,6 +1068,22 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                     ? 'Tambah Draft Aktif'
                     : 'Tambah Transaksi'}
               </Button>
+
+              {!isEditing && inputMode === 'ai' && assistantDrafts.length > 1 ? (
+                <Button
+                  type="button"
+                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600"
+                  onClick={handleSaveAllDrafts}
+                  disabled={isBusy}
+                >
+                  {isSavingAll ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Tambah Semua Draft
+                </Button>
+              ) : null}
             </div>
           </div>
         </form>

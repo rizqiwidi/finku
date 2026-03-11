@@ -505,7 +505,12 @@ export function TransactionsTable() {
 
             {/* Clear Date Filter */}
             {(dateFrom || dateTo) && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={clearDateFilters}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                onClick={clearDateFilters}
+              >
                 <X className="w-3 h-3" />
                 Reset
               </Button>
@@ -566,6 +571,11 @@ export function TransactionsTable() {
                                   <p className="text-xs text-muted-foreground">
                                     {formatDate(new Date(transaction.date))}
                                   </p>
+                                  {transaction.notes ? (
+                                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                                      {transaction.notes}
+                                    </p>
+                                  ) : null}
                                 </div>
                               </div>
                               <span
@@ -654,17 +664,24 @@ export function TransactionsTable() {
                               {formatDate(new Date(transaction.date))}
                             </TableCell>
                             <TableCell className="py-2">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="rounded p-1"
-                                  style={{ backgroundColor: `${transaction.category.color}20` }}
-                                >
-                                  <IconComponent
-                                    className="w-3 h-3"
-                                    style={{ color: transaction.category.color }}
-                                  />
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="rounded p-1"
+                                    style={{ backgroundColor: `${transaction.category.color}20` }}
+                                  >
+                                    <IconComponent
+                                      className="w-3 h-3"
+                                      style={{ color: transaction.category.color }}
+                                    />
+                                  </div>
+                                  <span className="text-sm">{transaction.description}</span>
                                 </div>
-                                <span className="text-sm">{transaction.description}</span>
+                                {transaction.notes ? (
+                                  <p className="line-clamp-2 pl-6 text-xs leading-relaxed text-muted-foreground">
+                                    {transaction.notes}
+                                  </p>
+                                ) : null}
                               </div>
                             </TableCell>
                             <TableCell className="py-2">

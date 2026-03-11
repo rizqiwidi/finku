@@ -231,6 +231,11 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
                           {formatRelativeDate(new Date(transaction.date))}
                         </span>
                       </div>
+                      {transaction.notes ? (
+                        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                          {transaction.notes}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   

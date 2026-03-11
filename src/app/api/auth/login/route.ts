@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
-import { AUTH_COOKIE_NAME, createAuthToken } from '@/lib/auth-server';
+import {
+  AUTH_COOKIE_NAME,
+  AUTH_SESSION_MAX_AGE_SECONDS,
+  createAuthToken,
+} from '@/lib/auth-server';
 import { isPasswordHash } from '@/lib/user-service';
 
 export async function POST(request: NextRequest) {
@@ -53,7 +57,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
       path: '/',
     });
 

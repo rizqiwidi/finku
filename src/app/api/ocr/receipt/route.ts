@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
 import { getOcrSpaceApiKey } from '@/lib/env';
 import { inferTransactionDraftsWithGroq } from '@/lib/transaction-ai';
-import { buildHeuristicDraftFromText } from '@/lib/transaction-drafts';
+import { buildHeuristicDraftsFromText } from '@/lib/transaction-drafts';
 import type { TransactionType } from '@/types';
 
 const OCR_SPACE_URL = 'https://api.ocr.space/parse/image';
@@ -205,7 +205,7 @@ export async function POST(request: Request) {
       type: category.type as TransactionType,
     }));
 
-    const fallbackDraft = buildHeuristicDraftFromText(parsedText, categories);
+    const fallbackDrafts = buildHeuristicDraftsFromText(parsedText, categories);
 
     try {
       const aiDraftBundle = await inferTransactionDraftsWithGroq({
@@ -214,14 +214,23 @@ export async function POST(request: Request) {
         sourceLabel: 'receipt',
       });
 
+      const drafts = aiDraftBundle.transactions.length > 0 ? aiDraftBundle.transactions : fallbackDrafts;
+
       return NextResponse.json({
         parsedText,
-        draft: aiDraftBundle.transactions[0] ?? fallbackDraft,
+        draft: drafts[0] ?? fallbackDrafts[0],
+        drafts,
+        summary: aiDraftBundle.summary ?? null,
       });
     } catch {
       return NextResponse.json({
         parsedText,
-        draft: fallbackDraft,
+        draft: fallbackDrafts[0] ?? null,
+        drafts: fallbackDrafts,
+        summary:
+          fallbackDrafts.length > 1
+            ? `${fallbackDrafts.length} item transaksi berhasil diurai dari struk.`
+            : '1 item transaksi berhasil diurai dari struk.',
       });
     }
   } catch (error) {
