@@ -179,6 +179,7 @@ src/app/page.tsx
 - [x] Dialog transaksi AI kini mempertahankan tab AI setelah hasil muncul, mendukung multi-draft lintas kategori dengan review/simpan per item atau bulk, dan upload struk dioptimasi lebih dulu di client melalui grayscale + kompresi sebelum request OCR.
 - [x] Daftar transaksi dashboard dan halaman riwayat kini punya layout mobile yang tidak terpotong, dialog kategori kustom diberi body scroll aman di layar kecil, dan chart tren keuangan mendukung mode jam/hari/bulan.
 - [x] Flow scan struk kini punya fallback otomatis ke file asli jika versi kompresi gagal dibaca OCR, dan error dari OCR.Space diteruskan lebih jelas ke UI agar troubleshooting tidak lagi generik.
+- [x] Route OCR kini menambah retry `base64Image` untuk file gambar jika upload multipart pertama gagal/kosong, dan dialog scan struk dilengkapi description yang valid agar warning aksesibilitas hilang.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -216,3 +217,4 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-11: Dialog tambah transaksi ditata ulang agar mode AI tetap aktif saat hasil datang, beberapa transaksi dari chat/suara dipertahankan sebagai draft terpisah dengan kategori yang bisa berbeda per item, dan gambar struk kini diperkecil/grayscale di client sebelum upload ke OCR untuk mengurangi beban server.
 - 2026-03-11: Responsivitas mobile diperdalam pada daftar transaksi dashboard, riwayat transaksi, dan dialog kategori kustom; chart tren keuangan juga diperluas ke agregasi jam, hari, dan bulan agar perilakunya lebih mirip chart trading tanpa meninggalkan filter periode dashboard.
 - 2026-03-11: Scan struk diperkeras dengan dua fallback: client otomatis mundur ke file asli bila optimasi gambar gagal/kurang cocok untuk OCR, dan route OCR kini meneruskan pesan error OCR.Space yang relevan agar kegagalan lebih mudah didiagnosis.
+- 2026-03-11: Integrasi OCR.Space ditambah retry sisi server lewat `base64Image` untuk kasus upload file multipart yang gagal atau kosong; dialog scan struk juga diberi description eksplisit untuk menghilangkan warning `aria-describedby` pada modal.

@@ -12,7 +12,14 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -468,6 +475,9 @@ export function ReceiptScanDialog() {
             <ReceiptText className="h-4 w-4 text-amber-500" />
             Scan Struk dengan OCR
           </DialogTitle>
+          <DialogDescription>
+            Unggah foto struk atau PDF, lalu review hasil OCR sebelum disimpan sebagai transaksi.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5">

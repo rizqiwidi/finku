@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
@@ -18,12 +19,64 @@ interface OcrSpaceResponse {
   }>;
 }
 
+interface ParsedOcrResponse {
+  ok: boolean;
+  status: number;
+  data: OcrSpaceResponse | null;
+  rawText: string;
+}
+
 function toErrorMessage(value?: string | string[]) {
   if (Array.isArray(value)) {
     return value.filter(Boolean).join(' ');
   }
 
   return value?.trim() || null;
+}
+
+function buildOcrPayload(apiKey: string) {
+  const payload = new FormData();
+  payload.append('apikey', apiKey);
+  payload.append('language', 'eng');
+  payload.append('isOverlayRequired', 'false');
+  payload.append('scale', 'true');
+  payload.append('detectOrientation', 'true');
+  payload.append('OCREngine', '2');
+  return payload;
+}
+
+async function sendOcrRequest(payload: FormData): Promise<ParsedOcrResponse> {
+  const response = await fetch(OCR_SPACE_URL, {
+    method: 'POST',
+    body: payload,
+  });
+
+  const rawText = await response.text();
+
+  try {
+    return {
+      ok: response.ok,
+      status: response.status,
+      data: JSON.parse(rawText) as OcrSpaceResponse,
+      rawText,
+    };
+  } catch {
+    return {
+      ok: response.ok,
+      status: response.status,
+      data: null,
+      rawText,
+    };
+  }
+}
+
+function extractParsedText(data: OcrSpaceResponse | null) {
+  return data?.ParsedResults?.map((item) => item.ParsedText?.trim() ?? '').filter(Boolean).join('\n') ?? '';
+}
+
+async function convertFileToDataUri(file: File) {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return `data:${file.type || 'image/jpeg'};base64,${buffer.toString('base64')}`;
 }
 
 export async function POST(request: Request) {
@@ -36,28 +89,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File struk wajib diisi.' }, { status: 400 });
     }
 
-    const payload = new FormData();
-    payload.append('apikey', getOcrSpaceApiKey());
-    payload.append('language', 'eng');
-    payload.append('isOverlayRequired', 'false');
-    payload.append('scale', 'true');
-    payload.append('detectOrientation', 'true');
-    payload.append('OCREngine', '2');
-    payload.append('file', file, file.name || 'receipt-image');
+    const apiKey = getOcrSpaceApiKey();
+    const filePayload = buildOcrPayload(apiKey);
+    filePayload.append('file', file, file.name || 'receipt-image');
 
-    const response = await fetch(OCR_SPACE_URL, {
-      method: 'POST',
-      body: payload,
-    });
+    let ocrResponse = await sendOcrRequest(filePayload);
+    let data = ocrResponse.data;
+    let parsedText = extractParsedText(data);
 
-    if (!response.ok) {
-      throw new Error(`OCR.Space request failed: ${response.status}`);
+    const shouldRetryWithBase64 =
+      file.type.startsWith('image/') &&
+      (!ocrResponse.ok || !parsedText || Boolean(data?.IsErroredOnProcessing));
+
+    if (shouldRetryWithBase64) {
+      const base64Payload = buildOcrPayload(apiKey);
+      base64Payload.append('base64Image', await convertFileToDataUri(file));
+
+      const base64Response = await sendOcrRequest(base64Payload);
+      const base64ParsedText = extractParsedText(base64Response.data);
+
+      if (base64ParsedText || !ocrResponse.ok || !data) {
+        ocrResponse = base64Response;
+        data = base64Response.data;
+        parsedText = base64ParsedText;
+      }
     }
 
-    const data = (await response.json()) as OcrSpaceResponse;
-    const parsedText = data.ParsedResults?.map((item) => item.ParsedText?.trim() ?? '')
-      .filter(Boolean)
-      .join('\n');
+    if (!ocrResponse.ok) {
+      const upstreamMessage =
+        toErrorMessage(data?.ErrorMessage) ??
+        toErrorMessage(data?.ErrorDetails) ??
+        (ocrResponse.rawText.trim().slice(0, 200) || null);
+
+      return NextResponse.json(
+        {
+          error:
+            upstreamMessage ??
+            `OCR.Space request gagal dengan status ${ocrResponse.status}.`,
+        },
+        { status: 502 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        {
+          error: 'OCR.Space mengembalikan respons yang tidak valid. Coba lagi dengan file lain.',
+        },
+        { status: 502 }
+      );
+    }
+
     const ocrErrorMessage =
       toErrorMessage(data.ErrorMessage) ??
       toErrorMessage(data.ErrorDetails) ??
