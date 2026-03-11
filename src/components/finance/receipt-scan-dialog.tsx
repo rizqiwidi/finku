@@ -344,7 +344,7 @@ export function ReceiptScanDialog() {
     setNotes(draft.notes ?? '');
   };
 
-  const buildActiveDraft = (currentDraft?: LocalReceiptDraft | null) => {
+  const buildActiveDraft = (currentDraft: LocalReceiptDraft) => {
     const selectedCategory = (categories ?? []).find((category) => category.id === categoryId);
     const parsedAmount = Number(amount.replace(/[^\d]/g, ''));
 

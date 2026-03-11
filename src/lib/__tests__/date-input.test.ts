@@ -4,7 +4,7 @@ import {
   formatDateInputValue,
   parseDateInputValue,
   parseTransactionDateValue,
-} from '../date-input.ts';
+} from '../date-input';
 
 test('formatDateInputValue preserves exact YYYY-MM-DD strings', () => {
   assert.equal(formatDateInputValue('2026-03-01'), '2026-03-01');

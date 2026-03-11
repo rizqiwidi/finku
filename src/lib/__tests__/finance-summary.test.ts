@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { calculateFinancialSummary } from '../finance-summary.ts';
+import { calculateFinancialSummary } from '../finance-summary';
 
 test('calculateFinancialSummary uses the official balance formula', () => {
   const summary = calculateFinancialSummary([

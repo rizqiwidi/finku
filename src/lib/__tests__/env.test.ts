@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { afterEach } from 'node:test';
-import { getBootstrapAdminConfig, getJwtSecret } from '../env.ts';
+import { getBootstrapAdminConfig, getJwtSecret } from '../env';
 
 const ORIGINAL_ENV = { ...process.env };
 
