@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Square,
   AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import { useTransactions, useDeleteTransaction, useDeleteTransactionsBulk } from
 import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatCurrency, formatRelativeDate, cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
+import { AddTransactionDialog } from './add-transaction-dialog';
 
 interface TransactionListProps {
   month: number;
@@ -286,9 +288,26 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
           </AnimatePresence>
           
           {transactions?.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Receipt className="w-12 h-12 mb-4 opacity-50" />
-              <p className="text-sm">Belum ada transaksi</p>
+            <div className="flex min-h-[280px] items-center justify-center py-8">
+              <div className="mx-auto flex max-w-sm flex-col items-center justify-center rounded-[28px] border border-dashed border-emerald-500/25 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.16),transparent_60%),linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,252,249,0.92))] px-6 py-8 text-center shadow-lg shadow-emerald-500/10 dark:bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.2),transparent_58%),linear-gradient(180deg,rgba(8,19,17,0.96),rgba(11,28,24,0.92))]">
+                <div className="mb-4 rounded-3xl bg-emerald-500/12 p-4 text-emerald-500 shadow-inner">
+                  <Receipt className="h-8 w-8" />
+                </div>
+                <p className="text-base font-semibold text-foreground">Belum ada transaksi terbaru</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Tambahkan transaksi pertama Anda untuk mulai melihat riwayat terbaru, catatan, dan ringkasan arus uang.
+                </p>
+                <div className="mt-5">
+                  <AddTransactionDialog
+                    trigger={
+                      <Button className="h-11 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-[1.02] hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/30">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Tambah Transaksi
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
             </div>
           )}
         </ScrollArea>

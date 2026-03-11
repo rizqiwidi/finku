@@ -71,7 +71,11 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { calculateFinancialSummary } from '@/lib/finance-summary';
 
-export function TransactionsTable() {
+interface TransactionsTableProps {
+  onEdit: (transaction: Transaction) => void;
+}
+
+export function TransactionsTable({ onEdit }: TransactionsTableProps) {
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState((today.getMonth() + 1).toString());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear().toString());
@@ -604,6 +608,18 @@ export function TransactionsTable() {
                                 {transaction.category.name}
                               </Badge>
                               {getTypeBadge(transaction.type)}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="ml-auto h-8 rounded-xl border border-emerald-500/15 bg-emerald-500/5 px-3 text-emerald-600 transition-all hover:bg-emerald-500/10 hover:text-emerald-700"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onEdit(transaction);
+                                }}
+                              >
+                                Edit
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -632,6 +648,7 @@ export function TransactionsTable() {
                         <TableHead className="text-xs">Deskripsi</TableHead>
                         <TableHead className="text-xs">Kategori</TableHead>
                         <TableHead className="text-xs">Tipe</TableHead>
+                        <TableHead className="text-xs text-center">Aksi</TableHead>
                         <TableHead className="text-xs text-right">Jumlah</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -698,6 +715,20 @@ export function TransactionsTable() {
                             </TableCell>
                             <TableCell className="py-2">
                               {getTypeBadge(transaction.type)}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-xl border border-emerald-500/15 bg-emerald-500/5 px-3 text-emerald-600 transition-all hover:bg-emerald-500/10 hover:text-emerald-700"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onEdit(transaction);
+                                }}
+                              >
+                                Edit
+                              </Button>
                             </TableCell>
                             <TableCell className="py-2 text-right text-sm font-semibold">
                               <span

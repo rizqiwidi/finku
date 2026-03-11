@@ -9,6 +9,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useBudgets } from '@/hooks/use-api';
@@ -126,9 +127,28 @@ export function BudgetProgress({ month, year }: BudgetProgressProps) {
               );
             })
           ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <Settings2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Klik "Atur" untuk mengalokasikan anggaran</p>
+            <div className="flex min-h-[240px] items-center justify-center py-4">
+              <div className="mx-auto flex max-w-sm flex-col items-center justify-center rounded-[28px] border border-dashed border-violet-500/25 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.14),transparent_58%),linear-gradient(180deg,rgba(255,255,255,0.88),rgba(247,250,255,0.94))] px-6 py-8 text-center shadow-lg shadow-sky-500/10 dark:bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_56%),linear-gradient(180deg,rgba(9,14,24,0.96),rgba(12,19,33,0.92))]">
+                <div className="mb-4 rounded-3xl bg-sky-500/12 p-4 text-sky-600 shadow-inner dark:text-sky-400">
+                  <Settings2 className="h-8 w-8" />
+                </div>
+                <p className="text-base font-semibold text-foreground">Anggaran belum diatur</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Atur alokasi anggaran agar tiap kategori punya batas belanja yang jelas dan progresnya langsung terlihat.
+                </p>
+                <div className="mt-5">
+                  <BudgetAllocationDialog
+                    month={month}
+                    year={year}
+                    trigger={
+                      <Button className="h-11 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 px-5 text-white shadow-lg shadow-sky-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-sky-600 hover:to-cyan-600 hover:shadow-xl hover:shadow-sky-500/30">
+                        <Settings2 className="mr-2 h-4 w-4" />
+                        Atur Anggaran
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

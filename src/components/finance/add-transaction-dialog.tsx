@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -54,6 +54,7 @@ type InputMode = 'manual' | 'ai';
 interface AddTransactionDialogProps {
   editTransaction?: Transaction | null;
   onClose?: () => void;
+  trigger?: ReactNode;
 }
 
 interface LocalAssistantDraft extends SuggestedTransactionDraft {
@@ -195,7 +196,11 @@ function prepareTransactionPayload(draft: LocalAssistantDraft, categories: Categ
   };
 }
 
-export function AddTransactionDialog({ editTransaction, onClose }: AddTransactionDialogProps) {
+export function AddTransactionDialog({
+  editTransaction,
+  onClose,
+  trigger,
+}: AddTransactionDialogProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>('manual');
   const [assistantPrompt, setAssistantPrompt] = useState('');
@@ -723,12 +728,14 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!isEditing ? (
         <DialogTrigger asChild>
-          <Button
-            className="h-11 w-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-105 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/30 sm:w-auto"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Tambah Transaksi
-          </Button>
+          {trigger || (
+            <Button
+              className="h-11 w-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-105 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/30 sm:w-auto"
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Tambah Transaksi
+            </Button>
+          )}
         </DialogTrigger>
       ) : null}
 

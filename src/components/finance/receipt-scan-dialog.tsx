@@ -30,7 +30,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCategories, useCreateTransaction } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { getCategoryIconComponent } from '@/lib/category-icons';
-import { formatDateInputValue } from '@/lib/date-input';
+import { formatDateInputValue, parseTransactionDateValue } from '@/lib/date-input';
 import {
   findCategoryIdFromDescription,
   findMatchingCategoryId,
@@ -314,6 +314,11 @@ function toLocalReceiptDraft(
   } satisfies LocalReceiptDraft;
 }
 
+function resolveSharedReceiptDate(drafts: SuggestedTransactionDraft[]) {
+  const firstValidDate = drafts.find((draft) => parseTransactionDateValue(draft.date))?.date;
+  return formatDateInputValue(firstValidDate ?? null);
+}
+
 async function optimizeReceiptImage(file: File) {
   const imageUrl = URL.createObjectURL(file);
 
@@ -563,7 +568,24 @@ export function ReceiptScanDialog() {
     }
 
     const nextDraft = buildActiveDraft(activeDraft);
-    const snapshot = drafts.map((draft, index) => (index === activeDraftIndex ? nextDraft : draft));
+    const sharedReceiptDate = formatDateInputValue(nextDraft.date);
+    const snapshot = drafts.map((draft, index) => {
+      if (index === activeDraftIndex) {
+        return {
+          ...nextDraft,
+          date: sharedReceiptDate,
+        };
+      }
+
+      if (draft.receiptId === nextDraft.receiptId) {
+        return {
+          ...draft,
+          date: sharedReceiptDate,
+        };
+      }
+
+      return draft;
+    });
     setDrafts(snapshot);
     return snapshot;
   };
@@ -724,15 +746,23 @@ export function ReceiptScanDialog() {
               : response.draft
                 ? [response.draft]
                 : [];
+          const sharedReceiptDate = resolveSharedReceiptDate(responseDrafts);
 
           const mappedDrafts = responseDrafts.map((draft, index) =>
-            toLocalReceiptDraft(draft, categories ?? [], {
+            toLocalReceiptDraft(
+              {
+                ...draft,
+                date: sharedReceiptDate,
+              },
+              categories ?? [],
+              {
               receiptId: preparedFile.id,
               receiptLabel: preparedFile.originalName,
               itemIndex: index,
               itemCount: responseDrafts.length,
               parsedText: response.parsedText ?? null,
-            })
+              }
+            )
           );
 
           if (mappedDrafts.length > 0) {

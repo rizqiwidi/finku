@@ -414,10 +414,7 @@ export default function Home() {
                 >
                   <ExcelUpload />
                   <ReceiptScanDialog />
-                  <AddTransactionDialog 
-                    editTransaction={editTransaction} 
-                    onClose={handleCloseEdit} 
-                  />
+                  <AddTransactionDialog />
                 </motion.div>
 
                 {/* Budget Progress */}
@@ -441,7 +438,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <TransactionsTable />
+                <TransactionsTable onEdit={handleEdit} />
               </motion.div>
             )}
 
@@ -469,6 +466,13 @@ export default function Home() {
           </AnimatePresence>
         </main>
       </div>
+
+      {editTransaction ? (
+        <AddTransactionDialog
+          editTransaction={editTransaction}
+          onClose={handleCloseEdit}
+        />
+      ) : null}
     </div>
   );
 }
