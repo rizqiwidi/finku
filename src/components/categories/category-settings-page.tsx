@@ -398,10 +398,25 @@ export function CategorySettingsPage() {
           onValueChange={(value) => setActiveType(value as TransactionType)}
           className="space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-3 md:w-[420px]">
-            <TabsTrigger value="expense">Pengeluaran</TabsTrigger>
-            <TabsTrigger value="income">Pemasukan</TabsTrigger>
-            <TabsTrigger value="savings">Tabungan</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-muted/80 p-1.5 md:w-[440px]">
+            <TabsTrigger
+              value="expense"
+              className="rounded-xl data-[state=active]:border-rose-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+            >
+              Pengeluaran
+            </TabsTrigger>
+            <TabsTrigger
+              value="income"
+              className="rounded-xl data-[state=active]:border-emerald-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+            >
+              Pemasukan
+            </TabsTrigger>
+            <TabsTrigger
+              value="savings"
+              className="rounded-xl data-[state=active]:border-amber-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+            >
+              Tabungan
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeType} className="space-y-4">

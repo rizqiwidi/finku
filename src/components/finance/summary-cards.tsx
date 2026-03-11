@@ -88,8 +88,8 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       description: 'Total pengeluaran bulan ini',
     },
     {
-      title: 'Tabungan Bulan Ini',
-      value: summary?.savings ?? summary?.totalSavings ?? 0,
+      title: 'Total Tabungan',
+      value: summary?.totalSavings ?? summary?.savings ?? 0,
       icon: PiggyBank,
       color: 'text-amber-500',
       tone: 'border-amber-500/20',
@@ -98,6 +98,8 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
       iconBg: 'bg-amber-100 dark:bg-amber-900/50',
       trend: 'neutral',
       description: monthName,
+      secondaryLabel: 'Tabungan bulan ini',
+      secondaryValue: summary?.savings ?? 0,
     },
   ];
 
@@ -153,7 +155,23 @@ export function SummaryCards({ month, year }: SummaryCardsProps) {
                       </motion.div>
                     )}
                   </div>
-                  <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{card.description}</p>
+                  {typeof card.secondaryValue === 'number' ? (
+                    <div className="space-y-1">
+                      <div className="rounded-2xl bg-amber-500/10 px-3 py-2">
+                        <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">
+                          {card.secondaryLabel}
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {formatCurrency(card.secondaryValue)}
+                        </p>
+                      </div>
+                      <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">
+                        {card.description}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{card.description}</p>
+                  )}
                 </div>
                 <motion.div 
                   className={`rounded-xl p-2 sm:p-2.5 ${card.iconBg} shrink-0 backdrop-blur-sm`}

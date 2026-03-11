@@ -13,7 +13,6 @@ import {
   X,
   PanelLeftClose,
   ChevronRight,
-  ChevronLeft,
 } from 'lucide-react';
 import { LoginForm } from '@/components/auth/login-form';
 import { SummaryCards } from '@/components/finance/summary-cards';
@@ -120,8 +119,8 @@ export default function Home() {
   const renderSidebarContent = () => (
     <>
       <div className="p-4 border-b border-sidebar-border shrink-0">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <motion.div 
               className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/30"
               whileHover={{ scale: 1.05 }}
@@ -138,16 +137,15 @@ export default function Home() {
             </div>
           </div>
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => {
               setSidebarOpen(false);
               setMobileMenuOpen(false);
             }}
-            className="w-full justify-start gap-2 border-sidebar-border bg-background/70 text-foreground hover:bg-sidebar-accent"
+            className="ml-auto h-9 w-9 shrink-0 rounded-xl text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
           >
             <PanelLeftClose className="h-4 w-4" />
-            Tutup Sidebar
           </Button>
         </div>
       </div>
@@ -277,14 +275,16 @@ export default function Home() {
                 </Button>
 
                 {/* Sidebar toggle button (desktop) */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hidden lg:flex text-muted-foreground hover:text-foreground"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                >
-                  {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </Button>
+                {!sidebarOpen ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden lg:flex text-muted-foreground hover:text-foreground"
+                    onClick={() => setSidebarOpen(true)}
+                  >
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                ) : null}
 
                 {/* Show logo when sidebar closed */}
                 {!sidebarOpen && (

@@ -7,7 +7,6 @@ import { z } from 'zod';
 import {
   AudioLines,
   BotMessageSquare,
-  CalendarDays,
   Loader2,
   Mic,
   MicOff,
@@ -748,9 +747,19 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
           <div className="flex-1 space-y-5 overflow-y-auto p-5">
             {!isEditing ? (
               <Tabs value={inputMode} onValueChange={handleInputModeChange} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="manual">Input Manual</TabsTrigger>
-                  <TabsTrigger value="ai">Chat / Suara AI</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-muted/80 p-1.5">
+                  <TabsTrigger
+                    value="manual"
+                    className="rounded-xl data-[state=active]:border-sky-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-sky-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                  >
+                    Input Manual
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="ai"
+                    className="rounded-xl data-[state=active]:border-emerald-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                  >
+                    Chat / Suara AI
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="manual" className="hidden" />
@@ -999,21 +1008,18 @@ export function AddTransactionDialog({ editTransaction, onClose }: AddTransactio
                   <Label htmlFor="date" className="text-sm font-medium">
                     Tanggal
                   </Label>
-                  <div className="relative">
-                    <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formatDateInputValue(watchedDate)}
-                      onChange={(event) =>
-                        form.setValue('date', parseDateInputValue(event.target.value), {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      className="pl-9"
-                    />
-                  </div>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formatDateInputValue(watchedDate)}
+                    onChange={(event) =>
+                      form.setValue('date', parseDateInputValue(event.target.value), {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    className="h-11"
+                  />
                 </div>
 
                 <div className="space-y-1.5">

@@ -307,7 +307,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
     inputs: Record<string, string>,
     isSavings: boolean
   ) => (
-    <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
+    <div className="rounded-3xl border border-border bg-card/92 p-3.5 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -338,10 +338,10 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className="rounded-2xl border border-border bg-muted/25 p-3"
+                className="rounded-2xl border border-border bg-muted/25 p-3 transition-colors hover:border-primary/30"
               >
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr),88px] sm:items-center">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <div
                       className="rounded-xl p-2"
                       style={{ backgroundColor: `${category.color}20` }}
@@ -353,7 +353,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                       <p className="text-xs text-muted-foreground">{formatCurrency(allocatedAmount)}</p>
                     </div>
                   </div>
-                  <div className="w-[88px]">
+                  <div className="w-full">
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -363,12 +363,12 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                       }
                       onBlur={() => normalizePercentageInput(category.id, isSavings)}
                       placeholder="0"
-                      className="h-10 rounded-xl border-border bg-background text-center text-sm font-semibold"
+                      className="h-9 rounded-xl border-border bg-background text-center text-sm font-semibold"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="mt-2 flex items-center gap-3">
                   <Slider
                     value={[category.allocationPercentage]}
                     onValueChange={(value) => handleSliderChange(category.id, value, isSavings)}
@@ -399,7 +399,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-w-[980px]">
+      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-w-[1120px]">
         <DialogHeader className="shrink-0 border-b border-border bg-gradient-to-r from-violet-500/10 to-sky-500/10 px-5 py-5">
           <div className="flex items-center gap-3 pr-8">
             <div className="rounded-2xl bg-gradient-to-br from-violet-500 to-sky-600 p-2.5 shadow-lg">
@@ -417,8 +417,8 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 lg:grid-cols-[320px,minmax(0,1fr)]">
-            <div className="space-y-4">
+          <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 lg:grid-cols-[290px,minmax(0,1fr)]">
+            <div className="space-y-3 lg:sticky lg:top-0">
               <div className="rounded-3xl border border-border bg-muted/40 p-4">
                 <div className="mb-3 flex items-center gap-2 text-foreground">
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -524,7 +524,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             </div>
 
             <div className="min-h-0 overflow-y-auto pr-1">
-              <div className="grid gap-4 xl:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 {renderAllocationSection(
                   'Kategori Pengeluaran',
                   'Atur porsi belanja bulanan Anda',

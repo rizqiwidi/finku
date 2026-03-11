@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
   FileScan,
   Loader2,
+  PiggyBank,
   ReceiptText,
   Save,
   Sparkles,
+  TrendingDown,
+  TrendingUp,
   Upload,
   X,
 } from 'lucide-react';
@@ -24,15 +26,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCategories, useCreateTransaction } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
+import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatDateInputValue } from '@/lib/date-input';
 import {
   findCategoryIdFromDescription,
@@ -41,6 +38,7 @@ import {
   suggestedTransactionDraftSchema,
   type SuggestedTransactionDraft,
 } from '@/lib/transaction-drafts';
+import { cn } from '@/lib/utils';
 import type { Category, TransactionType } from '@/types';
 
 const MAX_OCR_UPLOAD_BYTES = 6 * 1024 * 1024;
@@ -63,6 +61,7 @@ interface LocalReceiptDraft extends SuggestedTransactionDraft {
   receiptLabel: string;
   itemIndex: number;
   itemCount: number;
+  parsedText?: string | null;
 }
 
 interface ReceiptScanResponse {
@@ -108,10 +107,143 @@ function resolveDraftCategoryId(categories: Category[], draft: SuggestedTransact
   );
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeInlineText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sanitizeReceiptDraftNotes(notes?: string | null, parsedText?: string | null) {
+  const trimmedNotes = notes?.trim();
+  if (!trimmedNotes) {
+    return null;
+  }
+
+  if (parsedText && normalizeInlineText(trimmedNotes) === normalizeInlineText(parsedText)) {
+    return null;
+  }
+
+  const wordCount = trimmedNotes.split(/\s+/).length;
+  if (wordCount > 25 && /(qty|subtotal|total|cash|change|invoice|receipt)/i.test(trimmedNotes)) {
+    return null;
+  }
+
+  return trimmedNotes;
+}
+
+function getDescriptionTokens(description?: string | null) {
+  if (!description) {
+    return [];
+  }
+
+  const stopWords = new Set([
+    'dan',
+    'yang',
+    'untuk',
+    'dengan',
+    'pada',
+    'dari',
+    'the',
+    'item',
+    'items',
+    'transaksi',
+    'pembelian',
+    'belanja',
+    'struk',
+    'receipt',
+  ]);
+
+  return Array.from(
+    new Set(
+      description
+        .toLowerCase()
+        .split(/[^a-z0-9]+/i)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 3 && !stopWords.has(token))
+    )
+  );
+}
+
+function normalizeQuantityValue(rawValue: string) {
+  const parsed = Number.parseFloat(rawValue.replace(',', '.'));
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 99) {
+    return null;
+  }
+
+  return Number.isInteger(parsed)
+    ? parsed.toString()
+    : parsed.toLocaleString('id-ID', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+}
+
+function extractQuantityFromLine(line: string, tokens: string[]) {
+  const patterns = [
+    /(?:qty|jumlah|jml)\s*[:x-]?\s*(\d+(?:[.,]\d+)?)/i,
+    /\b(\d+(?:[.,]\d+)?)\s*(?:x|pcs|pc|item|items|porsi|pack|botol|gelas|cup|sachet|ltr|liter|kg|gr|g)\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = line.match(pattern);
+    const quantity = match?.[1] ? normalizeQuantityValue(match[1]) : null;
+    if (quantity) {
+      return quantity;
+    }
+  }
+
+  if (tokens.length === 0) {
+    return null;
+  }
+
+  const tokenPattern = tokens.map(escapeRegex).join('|');
+  const beforeMatch = line.match(new RegExp(`\\b(\\d{1,2})(?:[.,]0+)?\\s+(?:${tokenPattern})\\b`, 'i'));
+  const afterMatch = line.match(
+    new RegExp(`\\b(?:${tokenPattern})\\b(?:\\s*(?:x|qty|jumlah|pcs|pc|item|items|-)\\s*)?(\\d{1,2})(?:[.,]0+)?\\b`, 'i')
+  );
+
+  return normalizeQuantityValue(beforeMatch?.[1] ?? afterMatch?.[1] ?? '');
+}
+
+function extractReceiptQuantity(parsedText?: string | null, description?: string | null) {
+  if (!parsedText || !description) {
+    return null;
+  }
+
+  const tokens = getDescriptionTokens(description);
+  if (tokens.length === 0) {
+    return null;
+  }
+
+  const candidateLines = parsedText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => {
+      const normalizedLine = normalizeInlineText(line);
+      return tokens.some((token) => normalizedLine.includes(token));
+    });
+
+  for (const line of candidateLines) {
+    const quantity = extractQuantityFromLine(line, tokens);
+    if (quantity) {
+      return quantity;
+    }
+  }
+
+  return null;
+}
+
 function toLocalReceiptDraft(
   draft: SuggestedTransactionDraft,
   categories: Category[],
-  metadata: Pick<LocalReceiptDraft, 'receiptId' | 'receiptLabel' | 'itemIndex' | 'itemCount'>
+  metadata: Pick<LocalReceiptDraft, 'receiptId' | 'receiptLabel' | 'itemIndex' | 'itemCount' | 'parsedText'>
 ) {
   const normalizedDraft = suggestedTransactionDraftSchema.parse(
     sanitizeSuggestedTransactionDraftInput(draft)
@@ -119,6 +251,7 @@ function toLocalReceiptDraft(
 
   return {
     ...normalizedDraft,
+    notes: sanitizeReceiptDraftNotes(normalizedDraft.notes, metadata.parsedText),
     categoryId: resolveDraftCategoryId(categories, normalizedDraft),
     ...metadata,
   } satisfies LocalReceiptDraft;
@@ -259,7 +392,6 @@ export function ReceiptScanDialog() {
   const [prepareLoading, setPrepareLoading] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
-  const [scanSummary, setScanSummary] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<LocalReceiptDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [type, setType] = useState<TransactionType>('expense');
@@ -293,7 +425,6 @@ export function ReceiptScanDialog() {
     setPrepareLoading(false);
     setScanLoading(false);
     setIsSavingAll(false);
-    setScanSummary(null);
     setDrafts([]);
     setActiveDraftIndex(0);
     resetEditor();
@@ -525,7 +656,6 @@ export function ReceiptScanDialog() {
     setScanLoading(true);
     try {
       const collectedDrafts: LocalReceiptDraft[] = [];
-      const summaryParts: string[] = [];
       const failedFiles: string[] = [];
 
       for (const preparedFile of preparedFiles) {
@@ -544,18 +674,13 @@ export function ReceiptScanDialog() {
               receiptLabel: preparedFile.originalName,
               itemIndex: index,
               itemCount: responseDrafts.length,
+              parsedText: response.parsedText ?? null,
             })
           );
 
           if (mappedDrafts.length > 0) {
             collectedDrafts.push(...mappedDrafts);
           }
-
-          summaryParts.push(
-            response.summary?.trim()
-              ? `${preparedFile.originalName}: ${response.summary.trim()}`
-              : `${preparedFile.originalName}: ${responseDrafts.length} item`
-          );
         } catch (error) {
           console.error('Receipt scan failed:', error);
           failedFiles.push(preparedFile.originalName);
@@ -566,7 +691,6 @@ export function ReceiptScanDialog() {
         throw new Error('Tidak ada draft transaksi yang berhasil dihasilkan dari struk.');
       }
 
-      setScanSummary(summaryParts.join(' | '));
       setDrafts(collectedDrafts);
       applyDraft(0, collectedDrafts);
 
@@ -593,7 +717,12 @@ export function ReceiptScanDialog() {
       (categories ?? []).find((category) => category.id === draft.categoryId)?.name ??
       draft.categoryName ??
       'Tanpa kategori';
-    const baseLine = `${draft.receiptLabel} • item ${draft.itemIndex + 1}/${draft.itemCount} • ${resolvedCategoryName} • ${draft.description ?? draft.merchantName ?? 'Tanpa deskripsi'}`;
+    const resolvedDescription = draft.description ?? draft.merchantName ?? 'Tanpa deskripsi';
+    const quantity = extractReceiptQuantity(draft.parsedText, resolvedDescription);
+    const purchaseLine = quantity
+      ? `Pembelian ${quantity} ${resolvedDescription}`
+      : `Pembelian ${resolvedDescription}`;
+    const baseLine = `${draft.receiptLabel} • ${resolvedCategoryName} • ${purchaseLine}`;
     const extraNotes = draft.notes?.trim();
 
     return extraNotes ? `${baseLine}\n${extraNotes}` : baseLine;
@@ -854,9 +983,6 @@ export function ReceiptScanDialog() {
                     Draft aktif {activeDraftIndex + 1}/{drafts.length}
                   </Badge>
                 </div>
-                {scanSummary ? (
-                  <p className="text-sm leading-relaxed text-muted-foreground">{scanSummary}</p>
-                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {drafts.map((draft, index) => {
                     const isActive = index === activeDraftIndex;
@@ -880,9 +1006,6 @@ export function ReceiptScanDialog() {
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <Badge variant={isActive ? 'default' : 'outline'}>{draftTypeLabel}</Badge>
-                          <span className="text-[11px] text-muted-foreground">
-                            Item {draft.itemIndex + 1}/{draft.itemCount}
-                          </span>
                         </div>
                         <p className="line-clamp-1 text-sm font-semibold text-foreground">
                           {draft.description ?? draft.merchantName ?? `Draft ${index + 1}`}
@@ -899,34 +1022,70 @@ export function ReceiptScanDialog() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Tipe Transaksi</Label>
-                  <Select value={type} onValueChange={(value) => handleTypeChange(value as TransactionType)}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="expense">Pengeluaran</SelectItem>
-                      <SelectItem value="income">Pemasukan</SelectItem>
-                      <SelectItem value="savings">Tabungan</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-sm font-medium">Tipe Transaksi</Label>
+                  <ToggleGroup
+                    type="single"
+                    value={type}
+                    onValueChange={(value) => {
+                      if (value === 'expense' || value === 'income' || value === 'savings') {
+                        handleTypeChange(value);
+                      }
+                    }}
+                    className="w-full justify-start gap-1.5"
+                  >
+                    <ToggleGroupItem
+                      value="expense"
+                      className={cn(
+                        'flex-1 rounded-lg border-2 px-3 text-xs data-[state=on]:bg-rose-500 data-[state=on]:text-white',
+                        'data-[state=off]:border-rose-200 data-[state=off]:hover:border-rose-300'
+                      )}
+                    >
+                      <TrendingDown className="mr-1 h-3.5 w-3.5" />
+                      Pengeluaran
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="income"
+                      className={cn(
+                        'flex-1 rounded-lg border-2 px-3 text-xs data-[state=on]:bg-emerald-500 data-[state=on]:text-white',
+                        'data-[state=off]:border-emerald-200 data-[state=off]:hover:border-emerald-300'
+                      )}
+                    >
+                      <TrendingUp className="mr-1 h-3.5 w-3.5" />
+                      Pemasukan
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="savings"
+                      className={cn(
+                        'flex-1 rounded-lg border-2 px-3 text-xs data-[state=on]:bg-amber-500 data-[state=on]:text-white',
+                        'data-[state=off]:border-amber-200 data-[state=off]:hover:border-amber-300'
+                      )}
+                    >
+                      <PiggyBank className="mr-1 h-3.5 w-3.5" />
+                      Tabungan
+                    </ToggleGroupItem>
+                  </ToggleGroup>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Nominal (Rp)</Label>
-                  <Input
-                    inputMode="numeric"
-                    value={amount}
-                    onChange={(event) => setAmount(event.target.value.replace(/[^\d]/g, ''))}
-                    placeholder="0"
-                    className="h-11"
-                  />
+                  <Label className="text-sm font-medium">Jumlah (Rp)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                      Rp
+                    </span>
+                    <Input
+                      inputMode="numeric"
+                      value={amount ? Number(amount).toLocaleString('id-ID') : ''}
+                      onChange={(event) => setAmount(event.target.value.replace(/[^\d]/g, ''))}
+                      placeholder="0"
+                      className="h-11 pl-10 text-base font-semibold"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Deskripsi</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Deskripsi</Label>
                   <Input
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
@@ -936,43 +1095,72 @@ export function ReceiptScanDialog() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Kategori</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Pilih kategori" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredCategories.map((category: Category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-sm font-medium">Tanggal</Label>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                    className="h-11"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Tanggal</Label>
-                  <div className="relative">
-                    <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={date}
-                      onChange={(event) => setDate(event.target.value)}
-                      className="h-11 pl-9"
-                    />
-                  </div>
+                  <Label className="text-sm font-medium">Kategori</Label>
+                  {filteredCategories.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {filteredCategories.map((category: Category) => {
+                        const IconComponent = getCategoryIconComponent(category.icon);
+                        const isSelected = categoryId === category.id;
+
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => setCategoryId(category.id)}
+                            className={cn(
+                              'flex flex-col items-center gap-1 rounded-2xl border-2 p-2.5 transition-all',
+                              isSelected
+                                ? 'border-primary bg-primary/5 shadow-sm'
+                                : 'border-border bg-card/60 hover:border-primary/30'
+                            )}
+                          >
+                            <div
+                              className="rounded-xl p-2"
+                              style={{ backgroundColor: `${category.color}20` }}
+                            >
+                              <IconComponent className="h-4 w-4" style={{ color: category.color }} />
+                            </div>
+                            <span className="w-full truncate text-center text-[11px] font-medium">
+                              {category.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                      Belum ada kategori untuk tipe transaksi ini.
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Catatan</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    placeholder="Tambahkan catatan bila perlu"
+                    className="min-h-[88px] resize-none sm:min-h-[44px]"
+                  />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Catatan Tambahan</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Tambahkan catatan tambahan bila perlu"
-                  className="min-h-24 resize-none"
-                />
+              <div className="rounded-2xl border border-border bg-muted/20 p-4 text-xs leading-relaxed text-muted-foreground">
+                <div className="mb-1 font-semibold text-foreground">Catatan otomatis</div>
+                <p>
+                  Transaksi akan menyimpan nama struk, kategori, dan jumlah item yang berhasil
+                  dibaca dari OCR jika terdeteksi.
+                </p>
               </div>
             </div>
           )}
