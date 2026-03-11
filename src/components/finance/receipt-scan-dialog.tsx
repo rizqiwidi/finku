@@ -63,6 +63,7 @@ interface LocalReceiptDraft extends SuggestedTransactionDraft {
   itemIndex: number;
   itemCount: number;
   parsedText?: string | null;
+  detectedDate?: string | null;
 }
 
 interface ReceiptScanResponse {
@@ -300,7 +301,10 @@ function extractReceiptExtraNotes(notes?: string | null, parsedText?: string | n
 function toLocalReceiptDraft(
   draft: SuggestedTransactionDraft,
   categories: Category[],
-  metadata: Pick<LocalReceiptDraft, 'receiptId' | 'receiptLabel' | 'itemIndex' | 'itemCount' | 'parsedText'>
+  metadata: Pick<
+    LocalReceiptDraft,
+    'receiptId' | 'receiptLabel' | 'itemIndex' | 'itemCount' | 'parsedText' | 'detectedDate'
+  >
 ) {
   const normalizedDraft = suggestedTransactionDraftSchema.parse(
     sanitizeSuggestedTransactionDraftInput(draft)
@@ -314,9 +318,9 @@ function toLocalReceiptDraft(
   } satisfies LocalReceiptDraft;
 }
 
-function resolveSharedReceiptDate(drafts: SuggestedTransactionDraft[]) {
+function resolveDetectedReceiptDate(drafts: SuggestedTransactionDraft[]) {
   const firstValidDate = drafts.find((draft) => parseTransactionDateValue(draft.date))?.date;
-  return formatDateInputValue(firstValidDate ?? null);
+  return firstValidDate ? formatDateInputValue(firstValidDate) : null;
 }
 
 async function optimizeReceiptImage(file: File) {
@@ -746,7 +750,8 @@ export function ReceiptScanDialog() {
               : response.draft
                 ? [response.draft]
                 : [];
-          const sharedReceiptDate = resolveSharedReceiptDate(responseDrafts);
+          const detectedReceiptDate = resolveDetectedReceiptDate(responseDrafts);
+          const sharedReceiptDate = formatDateInputValue();
 
           const mappedDrafts = responseDrafts.map((draft, index) =>
             toLocalReceiptDraft(
@@ -761,6 +766,7 @@ export function ReceiptScanDialog() {
               itemIndex: index,
               itemCount: responseDrafts.length,
               parsedText: response.parsedText ?? null,
+              detectedDate: detectedReceiptDate,
               }
             )
           );
@@ -817,8 +823,13 @@ export function ReceiptScanDialog() {
       : `Pembelian ${itemLabel}`;
     const baseLine = `${draft.receiptLabel} • ${resolvedCategoryName} • ${purchaseLine}`;
     const extraNotes = extractReceiptExtraNotes(draft.notes, draft.parsedText);
+    const detectedDateNote =
+      draft.detectedDate && draft.detectedDate !== formatDateInputValue(draft.date)
+        ? `Tanggal struk: ${draft.detectedDate}`
+        : null;
+    const noteLines = [detectedDateNote, extraNotes].filter(Boolean).join('\n');
 
-    return extraNotes ? `${baseLine}\n${extraNotes}` : baseLine;
+    return noteLines ? `${baseLine}\n${noteLines}` : baseLine;
   };
 
   const preparePayload = (draft: LocalReceiptDraft) => {
