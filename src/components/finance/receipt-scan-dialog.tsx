@@ -39,10 +39,11 @@ const MAX_RECEIPT_EDGE = 1800;
 
 interface PreparedReceiptFile {
   file: File;
+  fallbackFile?: File | null;
   originalName: string;
   originalSize: number;
   uploadSize: number;
-  mode: 'image-optimized' | 'pdf';
+  mode: 'image-optimized' | 'image-original' | 'pdf';
 }
 
 function formatDateInput(value?: string | null) {
@@ -128,6 +129,7 @@ async function optimizeReceiptImage(file: File) {
 
     return {
       file: optimizedFile,
+      fallbackFile: file,
       originalName: file.name,
       originalSize: file.size,
       uploadSize: optimizedFile.size,
@@ -237,6 +239,7 @@ export function ReceiptScanDialog() {
 
       setPreparedFile({
         file: selectedFile,
+        fallbackFile: selectedFile,
         originalName: selectedFile.name,
         originalSize: selectedFile.size,
         uploadSize: selectedFile.size,
@@ -269,6 +272,23 @@ export function ReceiptScanDialog() {
       const optimizedFile = await optimizeReceiptImage(selectedFile);
 
       if (optimizedFile.uploadSize > MAX_OCR_UPLOAD_BYTES) {
+        if (selectedFile.size <= MAX_OCR_UPLOAD_BYTES) {
+          setPreparedFile({
+            file: selectedFile,
+            fallbackFile: selectedFile,
+            originalName: selectedFile.name,
+            originalSize: selectedFile.size,
+            uploadSize: selectedFile.size,
+            mode: 'image-original',
+          });
+          setFile(selectedFile);
+          toast({
+            title: 'Optimasi dilewati',
+            description: 'File asli dipakai karena hasil kompresi tidak cukup kecil untuk OCR.',
+          });
+          return;
+        }
+
         toast({
           title: 'Hasil optimasi masih terlalu besar',
           description: 'Gunakan foto struk yang lebih fokus atau potong area yang tidak perlu.',
@@ -280,6 +300,23 @@ export function ReceiptScanDialog() {
       setPreparedFile(optimizedFile);
       setFile(optimizedFile.file);
     } catch (error) {
+      if (selectedFile.size <= MAX_OCR_UPLOAD_BYTES) {
+        setPreparedFile({
+          file: selectedFile,
+          fallbackFile: selectedFile,
+          originalName: selectedFile.name,
+          originalSize: selectedFile.size,
+          uploadSize: selectedFile.size,
+          mode: 'image-original',
+        });
+        setFile(selectedFile);
+        toast({
+          title: 'Optimasi gambar dilewati',
+          description: 'File asli tetap dipakai agar scan struk bisa dicoba langsung.',
+        });
+        return;
+      }
+
       toast({
         title: 'Gagal menyiapkan gambar struk',
         description:
@@ -289,6 +326,23 @@ export function ReceiptScanDialog() {
     } finally {
       setPrepareLoading(false);
     }
+  };
+
+  const submitReceiptScan = async (scanFile: File) => {
+    const formData = new FormData();
+    formData.append('file', scanFile);
+
+    const response = await fetch('/api/ocr/receipt', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Gagal memindai struk.');
+    }
+
+    return data;
   };
 
   const handleScan = async () => {
@@ -303,17 +357,38 @@ export function ReceiptScanDialog() {
 
     setScanLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      let data;
 
-      const response = await fetch('/api/ocr/receipt', {
-        method: 'POST',
-        body: formData,
-      });
+      try {
+        data = await submitReceiptScan(file);
+      } catch (primaryError) {
+        const retryFile =
+          preparedFile?.mode === 'image-optimized' && preparedFile.fallbackFile
+            ? preparedFile.fallbackFile
+            : null;
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Gagal memindai struk.');
+        if (!retryFile) {
+          throw primaryError;
+        }
+
+        data = await submitReceiptScan(retryFile);
+        setPreparedFile((current) =>
+          current
+            ? {
+                ...current,
+                file: retryFile,
+                fallbackFile: retryFile,
+                uploadSize: retryFile.size,
+                mode: 'image-original',
+              }
+            : current
+        );
+        setFile(retryFile);
+
+        toast({
+          title: 'Scan memakai file asli',
+          description: 'Versi kompresi gagal dibaca OCR, jadi sistem otomatis mencoba file asli.',
+        });
       }
 
       const nextDraft = data.draft as SuggestedTransactionDraft;
@@ -444,7 +519,11 @@ export function ReceiptScanDialog() {
                       Upload {formatFileSize(preparedFile.uploadSize)}
                     </Badge>
                     <Badge variant="secondary">
-                      {preparedFile.mode === 'image-optimized' ? 'Grayscale + Compress' : 'PDF langsung'}
+                      {preparedFile.mode === 'image-optimized'
+                        ? 'Grayscale + Compress'
+                        : preparedFile.mode === 'image-original'
+                          ? 'File Asli'
+                          : 'PDF langsung'}
                     </Badge>
                   </div>
                 </div>

@@ -12,9 +12,18 @@ interface OcrSpaceResponse {
   OCRExitCode?: number;
   IsErroredOnProcessing?: boolean;
   ErrorMessage?: string[] | string;
+  ErrorDetails?: string | string[];
   ParsedResults?: Array<{
     ParsedText?: string;
   }>;
+}
+
+function toErrorMessage(value?: string | string[]) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).join(' ');
+  }
+
+  return value?.trim() || null;
 }
 
 export async function POST(request: Request) {
@@ -49,10 +58,29 @@ export async function POST(request: Request) {
     const parsedText = data.ParsedResults?.map((item) => item.ParsedText?.trim() ?? '')
       .filter(Boolean)
       .join('\n');
+    const ocrErrorMessage =
+      toErrorMessage(data.ErrorMessage) ??
+      toErrorMessage(data.ErrorDetails) ??
+      null;
+
+    if (data.IsErroredOnProcessing && !parsedText) {
+      return NextResponse.json(
+        {
+          error:
+            ocrErrorMessage ??
+            'OCR.Space gagal memproses file struk. Coba gunakan foto yang lebih jelas.',
+        },
+        { status: 422 }
+      );
+    }
 
     if (!parsedText) {
       return NextResponse.json(
-        { error: 'Teks pada struk tidak berhasil dibaca. Coba foto yang lebih jelas.' },
+        {
+          error:
+            ocrErrorMessage ??
+            'Teks pada struk tidak berhasil dibaca. Coba foto yang lebih jelas.',
+        },
         { status: 422 }
       );
     }
@@ -95,6 +123,10 @@ export async function POST(request: Request) {
     }
 
     console.error('Error scanning receipt:', error);
-    return NextResponse.json({ error: 'Gagal memproses scan struk.' }, { status: 500 });
+    const message =
+      error instanceof Error && error.message.includes('OCR_SPACE_API_KEY')
+        ? 'OCR_SPACE_API_KEY belum diisi di environment runtime.'
+        : 'Gagal memproses scan struk.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
