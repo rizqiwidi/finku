@@ -344,9 +344,22 @@ export function ReceiptScanDialog() {
       body: formData,
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data: { error?: string; draft?: SuggestedTransactionDraft; parsedText?: string } = {};
+
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = {};
+    }
+
     if (!response.ok) {
-      throw new Error(data.error || 'Gagal memindai struk.');
+      throw new Error(
+        data.error ||
+          (rawText.includes('<!DOCTYPE') || rawText.includes('<html')
+            ? 'Server scan struk di production gagal sebelum mengirim respons JSON. Cek env OCR_SPACE_API_KEY dan log function Vercel.'
+            : 'Gagal memindai struk.')
+      );
     }
 
     return data;

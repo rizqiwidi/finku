@@ -8,6 +8,8 @@ import { buildHeuristicDraftFromText } from '@/lib/transaction-drafts';
 import type { TransactionType } from '@/types';
 
 const OCR_SPACE_URL = 'https://api.ocr.space/parse/image';
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 interface OcrSpaceResponse {
   OCRExitCode?: number;
@@ -102,6 +104,11 @@ export async function POST(request: Request) {
       (!ocrResponse.ok || !parsedText || Boolean(data?.IsErroredOnProcessing));
 
     if (shouldRetryWithBase64) {
+      console.warn('OCR receipt retrying with base64 payload', {
+        fileName: file.name,
+        fileType: file.type,
+        status: ocrResponse.status,
+      });
       const base64Payload = buildOcrPayload(apiKey);
       base64Payload.append('base64Image', await convertFileToDataUri(file));
 
@@ -121,6 +128,12 @@ export async function POST(request: Request) {
         toErrorMessage(data?.ErrorDetails) ??
         (ocrResponse.rawText.trim().slice(0, 200) || null);
 
+      console.error('OCR.Space upstream request failed', {
+        status: ocrResponse.status,
+        upstreamMessage,
+        hasJson: Boolean(data),
+      });
+
       return NextResponse.json(
         {
           error:
@@ -132,6 +145,10 @@ export async function POST(request: Request) {
     }
 
     if (!data) {
+      console.error('OCR.Space returned invalid JSON payload', {
+        status: ocrResponse.status,
+        rawPreview: ocrResponse.rawText.slice(0, 200),
+      });
       return NextResponse.json(
         {
           error: 'OCR.Space mengembalikan respons yang tidak valid. Coba lagi dengan file lain.',
@@ -146,6 +163,10 @@ export async function POST(request: Request) {
       null;
 
     if (data.IsErroredOnProcessing && !parsedText) {
+      console.warn('OCR.Space processing error without parsed text', {
+        ocrErrorMessage,
+        fileName: file.name,
+      });
       return NextResponse.json(
         {
           error:
@@ -157,6 +178,10 @@ export async function POST(request: Request) {
     }
 
     if (!parsedText) {
+      console.warn('OCR receipt returned empty parsed text', {
+        fileName: file.name,
+        ocrErrorMessage,
+      });
       return NextResponse.json(
         {
           error:
