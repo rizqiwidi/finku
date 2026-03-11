@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { getCurrentJakartaMonthYear, getJakartaMonthRange } from '@/lib/date-input';
 import { calculateFinancialSummary } from '@/lib/finance-summary';
 
 export async function GET(request: Request) {
@@ -10,19 +11,19 @@ export async function GET(request: Request) {
     const month = searchParams.get('month');
     const year = searchParams.get('year');
 
-    const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
-    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+    const jakartaNow = getCurrentJakartaMonthYear();
+    const targetMonth = month ? parseInt(month) : jakartaNow.month;
+    const targetYear = year ? parseInt(year) : jakartaNow.year;
 
-    const startDate = new Date(targetYear, targetMonth - 1, 1);
-    const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+    const { start, end } = getJakartaMonthRange(targetYear, targetMonth);
 
     // Get all transactions for the month
     const transactions = await prisma.transaction.findMany({
       where: {
         userId: user.id,
         date: {
-          gte: startDate,
-          lte: endDate,
+          gte: start,
+          lte: end,
         },
       },
       select: {

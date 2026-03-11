@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
-import { parseTransactionDateValue } from '@/lib/date-input';
+import { getJakartaNowTimestamp, parseTransactionDateValue } from '@/lib/date-input';
 
 export async function GET(
   request: Request,
@@ -101,6 +101,7 @@ export async function PUT(
         type: category.type,
         date: parsedDate,
         notes: notes || null,
+        updatedAt: getJakartaNowTimestamp(),
       },
       include: {
         category: true,

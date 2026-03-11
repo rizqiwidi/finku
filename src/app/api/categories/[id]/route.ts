@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isCategoryIconName } from '@/lib/category-icons';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { getCurrentJakartaMonthYear } from '@/lib/date-input';
 
 const VALID_CATEGORY_TYPES = new Set(['income', 'expense', 'savings']);
 
@@ -177,9 +178,9 @@ export async function PATCH(
       data: updateData,
     });
 
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    const now = getCurrentJakartaMonthYear();
+    const month = now.month;
+    const year = now.year;
 
     if (nextType === 'expense' && nextBudget !== null) {
       await prisma.budget.upsert({

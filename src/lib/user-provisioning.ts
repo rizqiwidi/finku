@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_CATEGORY_TEMPLATES } from './default-categories';
+import { getCurrentJakartaMonthYear } from './date-input';
 import {
   DEFAULT_TEMPLATE_MONTHLY_INCOME,
   DEFAULT_TEMPLATE_SAVINGS_PERCENTAGE,
@@ -12,6 +13,7 @@ interface ProvisionUserDefaultsOptions {
   monthlyIncome?: number;
   savingsPercentage?: number;
   includeSampleTransactions?: boolean;
+  includeAllocationDefaults?: boolean;
 }
 
 export async function provisionUserDefaults(
@@ -19,7 +21,8 @@ export async function provisionUserDefaults(
   userId: string,
   options: ProvisionUserDefaultsOptions = {}
 ) {
-  const monthlyIncome = options.monthlyIncome ?? DEFAULT_TEMPLATE_MONTHLY_INCOME;
+  const includeAllocationDefaults = options.includeAllocationDefaults ?? true;
+  const monthlyIncome = options.monthlyIncome ?? (includeAllocationDefaults ? DEFAULT_TEMPLATE_MONTHLY_INCOME : 0);
   const savingsPercentage =
     options.savingsPercentage ?? DEFAULT_TEMPLATE_SAVINGS_PERCENTAGE;
 
@@ -52,18 +55,22 @@ export async function provisionUserDefaults(
         data: {
           ...category,
           userId,
-          budget: category.budget ?? null,
-          allocationPercentage: category.allocationPercentage ?? 0,
+          budget: includeAllocationDefaults ? category.budget ?? null : null,
+          allocationPercentage: includeAllocationDefaults ? category.allocationPercentage ?? 0 : 0,
         },
       })
     )
   );
 
   const categories = [...existingCategories, ...createdCategories];
+  if (!includeAllocationDefaults) {
+    return;
+  }
 
   const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
+  const currentJakartaPeriod = getCurrentJakartaMonthYear();
+  const month = currentJakartaPeriod.month;
+  const year = currentJakartaPeriod.year;
   const expenseCategories = categories.filter(
     (category) => category.type === 'expense' && category.budget !== null
   );

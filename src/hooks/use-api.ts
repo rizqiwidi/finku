@@ -50,6 +50,17 @@ export function invalidateFinanceQueries(queryClient: QueryClient) {
   ]);
 }
 
+export async function refreshFinanceQueries(queryClient: QueryClient) {
+  await invalidateFinanceQueries(queryClient);
+
+  await Promise.all([
+    queryClient.refetchQueries({ queryKey: ['transactions'], type: 'active' }),
+    queryClient.refetchQueries({ queryKey: ['summary'], type: 'active' }),
+    queryClient.refetchQueries({ queryKey: ['budgets'], type: 'active' }),
+    queryClient.refetchQueries({ queryKey: ['charts'], type: 'active' }),
+  ]);
+}
+
 // Categories hooks
 export function useCategories() {
   return useQuery<Category[]>({
@@ -91,7 +102,7 @@ export function useCreateTransaction() {
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      return invalidateFinanceQueries(queryClient);
+      return refreshFinanceQueries(queryClient);
     },
   });
 }
@@ -116,7 +127,7 @@ export function useUpdateTransaction() {
       });
     },
     onSuccess: () => {
-      return invalidateFinanceQueries(queryClient);
+      return refreshFinanceQueries(queryClient);
     },
   });
 }
@@ -130,7 +141,7 @@ export function useDeleteTransaction() {
         method: 'DELETE',
       }),
     onSuccess: () => {
-      return invalidateFinanceQueries(queryClient);
+      return refreshFinanceQueries(queryClient);
     },
   });
 }
@@ -146,7 +157,7 @@ export function useDeleteTransactionsBulk() {
         body: JSON.stringify({ ids }),
       }),
     onSuccess: () => {
-      return invalidateFinanceQueries(queryClient);
+      return refreshFinanceQueries(queryClient);
     },
   });
 }

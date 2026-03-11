@@ -34,6 +34,7 @@ import { formatDateInputValue } from '@/lib/date-input';
 import {
   findCategoryIdFromDescription,
   findMatchingCategoryId,
+  parseReceiptAmount,
   sanitizeSuggestedTransactionDraftInput,
   suggestedTransactionDraftSchema,
   type SuggestedTransactionDraft,
@@ -184,7 +185,43 @@ function normalizeQuantityValue(rawValue: string) {
       });
 }
 
-function extractQuantityFromLine(line: string, tokens: string[]) {
+function parseQuantityNumber(rawValue?: string | null) {
+  if (!rawValue) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(rawValue.replace(',', '.'));
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 99) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function normalizeReceiptItemLabel(description: string) {
+  return description
+    .replace(/^(?:pembelian|belanja|item|transaksi)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractQuantityFromLine(line: string, tokens: string[], targetAmount?: number | null) {
+  const quantityByMultiplier = Array.from(
+    line.matchAll(/(\d+(?:[.,]\d+)?)\s*[xX]\s*(?:rp\s*)?(\d{1,3}(?:[.,]\d{3})+|\d{3,})/gi)
+  );
+
+  for (const match of quantityByMultiplier) {
+    const quantityNumber = parseQuantityNumber(match[1]);
+    const unitAmount = parseReceiptAmount(match[2] ?? '');
+    if (!quantityNumber || !unitAmount) {
+      continue;
+    }
+
+    if (!targetAmount || Math.round(quantityNumber * unitAmount) === Math.round(targetAmount)) {
+      return normalizeQuantityValue(match[1]);
+    }
+  }
+
   const patterns = [
     /(?:qty|jumlah|jml)\s*[:x-]?\s*(\d+(?:[.,]\d+)?)/i,
     /\b(\d+(?:[.,]\d+)?)\s*(?:x|pcs|pc|item|items|porsi|pack|botol|gelas|cup|sachet|ltr|liter|kg|gr|g)\b/i,
@@ -211,33 +248,53 @@ function extractQuantityFromLine(line: string, tokens: string[]) {
   return normalizeQuantityValue(beforeMatch?.[1] ?? afterMatch?.[1] ?? '');
 }
 
-function extractReceiptQuantity(parsedText?: string | null, description?: string | null) {
-  if (!parsedText || !description) {
+function extractReceiptQuantity(
+  description?: string | null,
+  targetAmount?: number | null,
+  ...sources: Array<string | null | undefined>
+) {
+  if (!description) {
     return null;
   }
 
   const tokens = getDescriptionTokens(description);
-  if (tokens.length === 0) {
-    return null;
-  }
-
-  const candidateLines = parsedText
-    .split(/\r?\n/)
+  const candidateLines = sources
+    .flatMap((source) => (source ? source.split(/\r?\n/) : []))
     .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => {
-      const normalizedLine = normalizeInlineText(line);
-      return tokens.some((token) => normalizedLine.includes(token));
-    });
+    .filter(Boolean);
 
   for (const line of candidateLines) {
-    const quantity = extractQuantityFromLine(line, tokens);
+    const normalizedLine = normalizeInlineText(line);
+    const hasTokenMatch =
+      tokens.length === 0 || tokens.some((token) => normalizedLine.includes(token));
+    if (!hasTokenMatch && !targetAmount) {
+      continue;
+    }
+
+    const quantity = extractQuantityFromLine(line, tokens, targetAmount);
     if (quantity) {
       return quantity;
     }
   }
 
   return null;
+}
+
+function extractReceiptExtraNotes(notes?: string | null, parsedText?: string | null) {
+  const trimmedNotes = notes?.trim();
+  if (!trimmedNotes) {
+    return null;
+  }
+
+  if (parsedText && normalizeInlineText(trimmedNotes) === normalizeInlineText(parsedText)) {
+    return null;
+  }
+
+  if (trimmedNotes.split(/\s+/).length > 25 && /(rp|qty|jumlah|subtotal|total|cash|change|invoice)/i.test(trimmedNotes)) {
+    return null;
+  }
+
+  return trimmedNotes;
 }
 
 function toLocalReceiptDraft(
@@ -718,12 +775,18 @@ export function ReceiptScanDialog() {
       draft.categoryName ??
       'Tanpa kategori';
     const resolvedDescription = draft.description ?? draft.merchantName ?? 'Tanpa deskripsi';
-    const quantity = extractReceiptQuantity(draft.parsedText, resolvedDescription);
+    const itemLabel = normalizeReceiptItemLabel(resolvedDescription) || resolvedDescription;
+    const quantity = extractReceiptQuantity(
+      resolvedDescription,
+      draft.amount ?? null,
+      draft.notes,
+      draft.parsedText
+    );
     const purchaseLine = quantity
-      ? `Pembelian ${quantity} ${resolvedDescription}`
-      : `Pembelian ${resolvedDescription}`;
+      ? `Pembelian ${quantity} ${itemLabel}`
+      : `Pembelian ${itemLabel}`;
     const baseLine = `${draft.receiptLabel} • ${resolvedCategoryName} • ${purchaseLine}`;
-    const extraNotes = draft.notes?.trim();
+    const extraNotes = extractReceiptExtraNotes(draft.notes, draft.parsedText);
 
     return extraNotes ? `${baseLine}\n${extraNotes}` : baseLine;
   };
@@ -1155,13 +1218,6 @@ export function ReceiptScanDialog() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border bg-muted/20 p-4 text-xs leading-relaxed text-muted-foreground">
-                <div className="mb-1 font-semibold text-foreground">Catatan otomatis</div>
-                <p>
-                  Transaksi akan menyimpan nama struk, kategori, dan jumlah item yang berhasil
-                  dibaca dari OCR jika terdeteksi.
-                </p>
-              </div>
             </div>
           )}
         </div>

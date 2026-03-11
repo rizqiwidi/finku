@@ -16,6 +16,7 @@ export function formatCurrency(amount: number): string {
 
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
     day: 'numeric',
     month: 'short',
     year: 'numeric',

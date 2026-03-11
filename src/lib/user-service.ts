@@ -51,8 +51,10 @@ export async function createUserWithDefaults(input: CreateUserInput) {
     });
 
     await provisionUserDefaults(tx, user.id, {
-      monthlyIncome: input.monthlyIncome,
+      monthlyIncome: input.monthlyIncome ?? 0,
       savingsPercentage: input.savingsPercentage,
+      includeAllocationDefaults: false,
+      includeSampleTransactions: false,
     });
 
     return user;

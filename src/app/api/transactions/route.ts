@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isAuthError, requireAuthUser } from '@/lib/auth-server';
-import { parseTransactionDateValue } from '@/lib/date-input';
+import {
+  getJakartaMonthRange,
+  getJakartaNowTimestamp,
+  parseTransactionDateValue,
+} from '@/lib/date-input';
 
 export async function GET(request: Request) {
   try {
@@ -31,11 +35,10 @@ export async function GET(request: Request) {
     }
 
     if (month && year) {
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-      const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+      const { start, end } = getJakartaMonthRange(parseInt(year), parseInt(month));
       where.date = {
-        gte: startDate,
-        lte: endDate,
+        gte: start,
+        lte: end,
       };
     }
 
@@ -95,6 +98,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const nowTimestamp = getJakartaNowTimestamp();
+
     const transaction = await prisma.transaction.create({
       data: {
         amount: parseFloat(amount),
@@ -103,6 +108,8 @@ export async function POST(request: Request) {
         type: type || category.type,
         date: parsedDate,
         notes: notes || null,
+        createdAt: nowTimestamp,
+        updatedAt: nowTimestamp,
         userId: user.id,
       },
       include: {
