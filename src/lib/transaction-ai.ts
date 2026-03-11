@@ -1,6 +1,8 @@
 import { getGroqApiKey } from '@/lib/env';
 import {
   buildHeuristicDraftsFromText,
+  sanitizeSuggestedTransactionDraftBundleInput,
+  sanitizeSuggestedTransactionDraftInput,
   suggestedTransactionDraftBundleSchema,
   suggestedTransactionDraftSchema,
   type CategoryOption,
@@ -38,13 +40,21 @@ function normalizeDraftBundle(
   fallback: SuggestedTransactionDraftBundle
 ) {
   try {
-    const normalized = suggestedTransactionDraftBundleSchema.parse(parsed);
+    const normalized = suggestedTransactionDraftBundleSchema.parse(
+      sanitizeSuggestedTransactionDraftBundleInput(parsed)
+    );
     return normalized.transactions.map((draft, index) =>
       mergeDraftWithFallback(draft, fallback.transactions[index] ?? fallback.transactions[0])
     );
   } catch {
     try {
-      const singleDraft = suggestedTransactionDraftSchema.parse(parsed);
+      const singleDraft = suggestedTransactionDraftSchema.parse(
+        sanitizeSuggestedTransactionDraftInput(
+          parsed && typeof parsed === 'object'
+            ? (parsed as Partial<SuggestedTransactionDraft>)
+            : {}
+        )
+      );
       return [mergeDraftWithFallback(singleDraft, fallback.transactions[0])];
     } catch {
       return fallback.transactions;
@@ -139,15 +149,17 @@ export function mergeDraftWithFallback(
   draft: SuggestedTransactionDraft,
   fallback: SuggestedTransactionDraft
 ) {
-  return suggestedTransactionDraftSchema.parse({
-    type: draft.type ?? fallback.type,
-    amount: draft.amount ?? fallback.amount ?? null,
-    description: draft.description ?? fallback.description ?? null,
+  return suggestedTransactionDraftSchema.parse(
+    sanitizeSuggestedTransactionDraftInput({
+      type: draft.type ?? fallback.type,
+      amount: draft.amount ?? fallback.amount ?? null,
+      description: draft.description ?? fallback.description ?? null,
     categoryName: draft.categoryName ?? fallback.categoryName ?? null,
     date: draft.date ?? fallback.date ?? null,
     notes: draft.notes ?? fallback.notes ?? null,
-    merchantName: draft.merchantName ?? fallback.merchantName ?? null,
-    confidence: draft.confidence ?? fallback.confidence ?? null,
-    reasoning: draft.reasoning ?? fallback.reasoning ?? null,
-  });
+      merchantName: draft.merchantName ?? fallback.merchantName ?? null,
+      confidence: draft.confidence ?? fallback.confidence ?? null,
+      reasoning: draft.reasoning ?? fallback.reasoning ?? null,
+    })
+  );
 }

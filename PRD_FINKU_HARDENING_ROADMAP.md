@@ -181,6 +181,7 @@ src/app/page.tsx
 - [x] Flow scan struk kini punya fallback otomatis ke file asli jika versi kompresi gagal dibaca OCR, dan error dari OCR.Space diteruskan lebih jelas ke UI agar troubleshooting tidak lagi generik.
 - [x] Route OCR kini menambah retry `base64Image` untuk file gambar jika upload multipart pertama gagal/kosong, dan dialog scan struk dilengkapi description yang valid agar warning aksesibilitas hilang.
 - [x] Route OCR kini dipaksa ke runtime `nodejs` dengan durasi lebih longgar untuk deployment Vercel, plus client mampu membaca fallback error non-JSON jika function crash sebelum sempat membalas JSON.
+- [x] Schema draft OCR/AI kini men-sanitize field panjang sebelum validasi Zod, sehingga teks struk yang sangat panjang tidak lagi memicu `500` hanya karena `description` melebihi batas.
 
 ## 12. Session Handover Prompt
 Gunakan ini di sesi baru:
@@ -220,3 +221,4 @@ Wajib update checklist dan decision log PRD setelah implementasi.
 - 2026-03-11: Scan struk diperkeras dengan dua fallback: client otomatis mundur ke file asli bila optimasi gambar gagal/kurang cocok untuk OCR, dan route OCR kini meneruskan pesan error OCR.Space yang relevan agar kegagalan lebih mudah didiagnosis.
 - 2026-03-11: Integrasi OCR.Space ditambah retry sisi server lewat `base64Image` untuk kasus upload file multipart yang gagal atau kosong; dialog scan struk juga diberi description eksplisit untuk menghilangkan warning `aria-describedby` pada modal.
 - 2026-03-11: Untuk stabilitas deployment, route OCR diekspilisitkan memakai runtime `nodejs` dan `maxDuration` lebih besar; client scan struk juga menangani respons 500 non-JSON agar kegagalan function di Vercel bisa dibedakan dari error OCR biasa.
+- 2026-03-11: Draft OCR/AI kini disanitasi sebelum parse schema, termasuk pemotongan otomatis field seperti `description`, `merchantName`, `reasoning`, dan `summary`, agar respons OCR/Groq yang panjang tidak menjatuhkan route dengan `ZodError`.

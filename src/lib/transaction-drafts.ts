@@ -7,6 +7,13 @@ export interface CategoryOption {
   type: TransactionType;
 }
 
+const DRAFT_DESCRIPTION_MAX = 120;
+const DRAFT_CATEGORY_NAME_MAX = 60;
+const DRAFT_NOTES_MAX = 500;
+const DRAFT_MERCHANT_NAME_MAX = 120;
+const DRAFT_REASONING_MAX = 500;
+const DRAFT_SUMMARY_MAX = 500;
+
 export const suggestedTransactionDraftSchema = z.object({
   type: z.enum(['income', 'expense', 'savings']).default('expense'),
   amount: z.number().positive().nullable().optional(),
@@ -30,6 +37,58 @@ export type SuggestedTransactionDraftBundle = z.infer<typeof suggestedTransactio
 
 function compactWhitespace(value: string) {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+function truncateNullableString(value: unknown, maxLength: number) {
+  if (typeof value !== 'string') {
+    return value ?? null;
+  }
+
+  const normalized = compactWhitespace(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.slice(0, maxLength);
+}
+
+export function sanitizeSuggestedTransactionDraftInput(
+  draft: Partial<SuggestedTransactionDraft>
+) {
+  return {
+    ...draft,
+    description: truncateNullableString(draft.description, DRAFT_DESCRIPTION_MAX),
+    categoryName: truncateNullableString(draft.categoryName, DRAFT_CATEGORY_NAME_MAX),
+    notes: truncateNullableString(draft.notes, DRAFT_NOTES_MAX),
+    merchantName: truncateNullableString(draft.merchantName, DRAFT_MERCHANT_NAME_MAX),
+    reasoning: truncateNullableString(draft.reasoning, DRAFT_REASONING_MAX),
+    date: typeof draft.date === 'string' ? compactWhitespace(draft.date) || null : draft.date ?? null,
+  };
+}
+
+export function sanitizeSuggestedTransactionDraftBundleInput(bundle: unknown) {
+  if (!bundle || typeof bundle !== 'object') {
+    return bundle;
+  }
+
+  const candidate = bundle as {
+    transactions?: unknown;
+    summary?: unknown;
+  };
+
+  return {
+    ...candidate,
+    transactions: Array.isArray(candidate.transactions)
+      ? candidate.transactions.map((draft) =>
+          sanitizeSuggestedTransactionDraftInput(
+            draft && typeof draft === 'object'
+              ? (draft as Partial<SuggestedTransactionDraft>)
+              : {}
+          )
+        )
+      : candidate.transactions,
+    summary: truncateNullableString(candidate.summary, DRAFT_SUMMARY_MAX),
+  };
 }
 
 export function compactTransactionText(value: string) {
@@ -298,17 +357,19 @@ export function buildHeuristicDraftFromText(
       ?.name ?? null;
 
   return suggestedTransactionDraftSchema.parse({
-    type,
-    amount,
-    categoryName,
-    description: merchantName ?? lines[0] ?? 'Transaksi dari struk',
-    date,
-    notes: normalizedText.slice(0, 500),
-    merchantName,
-    confidence: amount ? 62 : 38,
-    reasoning: amount
-      ? 'Draft disusun dari pola nominal terbesar dan keyword pada teks struk.'
-      : 'Draft disusun dari keyword teks. Periksa kembali nominal sebelum disimpan.',
+    ...sanitizeSuggestedTransactionDraftInput({
+      type,
+      amount,
+      categoryName,
+      description: merchantName ?? lines[0] ?? 'Transaksi dari struk',
+      date,
+      notes: normalizedText.slice(0, 500),
+      merchantName,
+      confidence: amount ? 62 : 38,
+      reasoning: amount
+        ? 'Draft disusun dari pola nominal terbesar dan keyword pada teks struk.'
+        : 'Draft disusun dari keyword teks. Periksa kembali nominal sebelum disimpan.',
+    }),
   });
 }
 

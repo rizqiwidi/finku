@@ -32,6 +32,7 @@ import { getCategoryIconComponent } from '@/lib/category-icons';
 import {
   findCategoryIdFromDescription,
   findMatchingCategoryId,
+  sanitizeSuggestedTransactionDraftInput,
   suggestedTransactionDraftSchema,
   type SuggestedTransactionDraft,
 } from '@/lib/transaction-drafts';
@@ -124,7 +125,9 @@ function resolveDraftCategoryId(categories: Category[], draft: SuggestedTransact
 }
 
 function toLocalAssistantDraft(draft: SuggestedTransactionDraft, categories: Category[]) {
-  const normalizedDraft = suggestedTransactionDraftSchema.parse(draft);
+  const normalizedDraft = suggestedTransactionDraftSchema.parse(
+    sanitizeSuggestedTransactionDraftInput(draft)
+  );
   return {
     ...normalizedDraft,
     categoryId: resolveDraftCategoryId(categories, normalizedDraft),
@@ -150,17 +153,19 @@ function buildDraftFromForm(
   currentDraft?: LocalAssistantDraft | null
 ) {
   const selectedCategory = categories.find((category) => category.id === values.categoryId);
-  const nextDraft = suggestedTransactionDraftSchema.parse({
-    type: values.type,
-    amount: values.amount > 0 ? values.amount : null,
-    description: values.description.trim() || null,
-    categoryName: selectedCategory?.name ?? currentDraft?.categoryName ?? null,
-    date: values.date.toISOString(),
-    notes: values.notes?.trim() || null,
-    merchantName: currentDraft?.merchantName ?? null,
-    confidence: currentDraft?.confidence ?? null,
-    reasoning: currentDraft?.reasoning ?? null,
-  });
+  const nextDraft = suggestedTransactionDraftSchema.parse(
+    sanitizeSuggestedTransactionDraftInput({
+      type: values.type,
+      amount: values.amount > 0 ? values.amount : null,
+      description: values.description.trim() || null,
+      categoryName: selectedCategory?.name ?? currentDraft?.categoryName ?? null,
+      date: values.date.toISOString(),
+      notes: values.notes?.trim() || null,
+      merchantName: currentDraft?.merchantName ?? null,
+      confidence: currentDraft?.confidence ?? null,
+      reasoning: currentDraft?.reasoning ?? null,
+    })
+  );
 
   return {
     ...nextDraft,
