@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/auth-context';
 import type { Transaction, Category, FinancialSummary } from '@/types';
 
 // API helper functions
@@ -61,16 +62,29 @@ export async function refreshFinanceQueries(queryClient: QueryClient) {
   ]);
 }
 
+function useUserScopedQueryOptions() {
+  const { user, isLoading } = useAuth();
+
+  return {
+    userId: user?.id ?? null,
+    enabled: Boolean(user) && !isLoading,
+  };
+}
+
 // Categories hooks
 export function useCategories() {
+  const { userId, enabled } = useUserScopedQueryOptions();
+
   return useQuery<Category[]>({
-    queryKey: ['categories'],
+    queryKey: ['categories', userId],
     queryFn: () => fetchApi<Category[]>('/api/categories'),
+    enabled,
   });
 }
 
 // Transactions hooks
 export function useTransactions(month?: number, year?: number) {
+  const { userId, enabled } = useUserScopedQueryOptions();
   const params = new URLSearchParams();
   if (month) params.append('month', month.toString());
   if (year) params.append('year', year.toString());
@@ -79,8 +93,9 @@ export function useTransactions(month?: number, year?: number) {
   const url = query ? `/api/transactions?${query}` : '/api/transactions';
 
   return useQuery<Transaction[]>({
-    queryKey: ['transactions', month, year],
+    queryKey: ['transactions', userId, month, year],
     queryFn: () => fetchApi<Transaction[]>(url),
+    enabled,
   });
 }
 
@@ -164,6 +179,7 @@ export function useDeleteTransactionsBulk() {
 
 // Summary hooks
 export function useSummary(month?: number, year?: number) {
+  const { userId, enabled } = useUserScopedQueryOptions();
   const params = new URLSearchParams();
   if (month) params.append('month', month.toString());
   if (year) params.append('year', year.toString());
@@ -172,13 +188,15 @@ export function useSummary(month?: number, year?: number) {
   const url = query ? `/api/summary?${query}` : '/api/summary';
 
   return useQuery<SummaryResponse>({
-    queryKey: ['summary', month, year],
+    queryKey: ['summary', userId, month, year],
     queryFn: () => fetchApi<SummaryResponse>(url),
+    enabled,
   });
 }
 
 // Budget hooks
 export function useBudgets(month?: number, year?: number) {
+  const { userId, enabled } = useUserScopedQueryOptions();
   const params = new URLSearchParams();
   if (month) params.append('month', month.toString());
   if (year) params.append('year', year.toString());
@@ -187,8 +205,9 @@ export function useBudgets(month?: number, year?: number) {
   const url = query ? `/api/budgets?${query}` : '/api/budgets';
 
   return useQuery<BudgetProgress[]>({
-    queryKey: ['budgets', month, year],
+    queryKey: ['budgets', userId, month, year],
     queryFn: () => fetchApi<BudgetProgress[]>(url),
+    enabled,
   });
 }
 
@@ -198,6 +217,7 @@ export function useMonthlyChartData(
   year?: number,
   granularity: 'hour' | 'day' | 'month' = 'month'
 ) {
+  const { userId, enabled } = useUserScopedQueryOptions();
   const params = new URLSearchParams();
   params.append('type', 'monthly');
   if (month) params.append('month', month.toString());
@@ -205,8 +225,9 @@ export function useMonthlyChartData(
   params.append('granularity', granularity);
 
   return useQuery<TrendDataPoint[]>({
-    queryKey: ['charts', 'monthly', granularity, month, year],
+    queryKey: ['charts', userId, 'monthly', granularity, month, year],
     queryFn: () => fetchApi<TrendDataPoint[]>(`/api/charts?${params.toString()}`),
+    enabled,
   });
 }
 
@@ -215,6 +236,7 @@ export function useCategorySpending(
   year?: number,
   transactionType: 'expense' | 'income' = 'expense'
 ) {
+  const { userId, enabled } = useUserScopedQueryOptions();
   const params = new URLSearchParams();
   params.append('type', 'category');
   if (month) params.append('month', month.toString());
@@ -222,7 +244,8 @@ export function useCategorySpending(
   params.append('transactionType', transactionType);
 
   return useQuery<CategorySpending[]>({
-    queryKey: ['charts', 'category', transactionType, month, year],
+    queryKey: ['charts', userId, 'category', transactionType, month, year],
     queryFn: () => fetchApi<CategorySpending[]>(`/api/charts?${params.toString()}`),
+    enabled,
   });
 }

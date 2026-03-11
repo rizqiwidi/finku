@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DateInput } from '@/components/ui/date-input';
 import {
   Dialog,
   DialogContent,
@@ -1200,11 +1201,9 @@ export function ReceiptScanDialog() {
 
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Tanggal</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={date}
                     onChange={(event) => setDate(event.target.value)}
-                    className="h-11"
                   />
                 </div>
 

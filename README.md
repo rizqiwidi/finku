@@ -1,60 +1,93 @@
-# Finku
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./public/branding/finku-white-512.png">
+    <img src="./public/branding/finku-black-512.png" alt="Finku logo" width="140">
+  </picture>
+</p>
 
-Finku is a personal finance app built with Next.js, Prisma, and Supabase.
+<h1 align="center">Finku</h1>
 
-Current architecture:
+<p align="center">
+  <strong>Financial Management</strong><br />
+  Personal finance app berbasis Next.js, Prisma, dan Supabase untuk mengelola pemasukan, pengeluaran, anggaran, serta alur transaksi yang dibantu OCR dan AI.
+</p>
 
-- 1 shared Supabase Postgres database
-- private data isolation by `userId`
-- JWT cookie auth for private API routes
-- no default admin credentials committed in code or SQL
+<p align="center">
+  <a href="#quick-start">Quick Start</a>
+  ·
+  <a href="#stack">Stack</a>
+  ·
+  <a href="#environment">Environment</a>
+  ·
+  <a href="#security--data-model">Security</a>
+  ·
+  <a href="#scripts">Scripts</a>
+</p>
+
+<p align="center">
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-111827?style=for-the-badge&logo=nextdotjs">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-0f172a?style=for-the-badge&logo=react">
+  <img alt="TypeScript 5" src="https://img.shields.io/badge/TypeScript-5-1d4ed8?style=for-the-badge&logo=typescript&logoColor=white">
+  <img alt="Prisma" src="https://img.shields.io/badge/Prisma-ORM-0f172a?style=for-the-badge&logo=prisma">
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres-065f46?style=for-the-badge&logo=supabase">
+</p>
+
+> Arsitektur saat ini memakai satu database Supabase Postgres bersama, isolasi data privat per `userId`, auth cookie berbasis JWT untuk route privat, dan tidak menyimpan default admin credentials di source code maupun SQL.
+
+<details>
+  <summary><strong>Why Finku</strong></summary>
+
+  - Dashboard untuk saldo, income, expenses, savings, chart bulanan, dan performa kategori.
+  - Riwayat transaksi lengkap dengan create, edit, delete, import batch, dan OCR struk.
+  - Alokasi anggaran per bulan dan progress budget per kategori.
+  - Admin bootstrap aman tanpa user demo hardcoded.
+  - Template data per user agar setiap akun baru langsung punya kategori, budget, dan contoh transaksi sendiri.
+</details>
 
 ## Stack
 
-- Next.js 16
-- React 19
-- TypeScript 5
-- Prisma
-- Supabase Postgres
-- Tailwind CSS
-- TanStack Query
+| Layer | Tools |
+| --- | --- |
+| App | Next.js 16, React 19, TypeScript 5 |
+| UI | Tailwind CSS 4, Radix UI, Framer Motion |
+| Data | Prisma, Supabase Postgres |
+| State | TanStack Query, React Context |
+| Assistive input | OCR.Space, Groq |
 
-## Local setup
+## Architecture
 
-1. Install dependencies.
+```mermaid
+flowchart LR
+  Browser[Browser / PWA] --> UI[Next.js App Router UI]
+  UI --> API[Private API Routes]
+  API --> Auth[JWT Cookie Auth]
+  API --> Prisma[Prisma Client]
+  Prisma --> DB[(Supabase Postgres)]
+  API --> AI[OCR.Space / Groq]
+```
+
+## Quick Start
+
+1. Install dependency.
 
 ```bash
 bun install
 ```
 
-2. Copy env template and fill the required values.
+2. Salin env template lalu isi nilai yang dibutuhkan.
 
 ```bash
 cp .env.example .env
 ```
 
-Required env vars:
-
-- `DATABASE_URL`
-- `DIRECT_DATABASE_URL`
-- `JWT_SECRET`
-
-Optional env vars for assistant features:
-
-- `OCR_SPACE_API_KEY`
-- `GROQ_API_KEY`
-
-`JWT_SECRET` must be a random string with at least 32 characters. Placeholder values are rejected at runtime.
-For Supabase pooler connections, `DATABASE_URL` should include `?pgbouncer=true&connection_limit=1` to avoid Prisma prepared statement errors.
-
-3. Generate Prisma client and push schema.
+3. Generate Prisma client dan push schema.
 
 ```bash
 bun run db:generate
 bun run db:push
 ```
 
-4. Bootstrap the first admin account safely with env vars.
+4. Bootstrap admin pertama via environment variables.
 
 ```bash
 $env:ADMIN_BOOTSTRAP_USERNAME="admin"
@@ -64,90 +97,87 @@ $env:ADMIN_BOOTSTRAP_EMAIL="admin@example.com"
 bun run admin:bootstrap
 ```
 
-This creates the admin and provisions per-user template data:
-
-- default categories
-- current-month budgets
-- sample transactions
-- user settings with demo monthly income
-
-5. If you already have users in the database and want to backfill the same template data for all of them:
-
-```bash
-bun run users:backfill-template
-```
-
-This backfill is idempotent and only fills missing template data; it does not delete or replace existing user-owned records.
-
-6. Start the app.
+5. Jalankan development server.
 
 ```bash
 bun run dev
 ```
 
-## Security and data isolation
+6. Jika environment sudah punya user lama dan Anda ingin melengkapi template data mereka:
 
-- `Transaction`, `Category`, `Budget`, and `UserSettings` are scoped to one user.
-- Private API routes resolve the authenticated user from the auth cookie and filter by `userId`.
-- Detail routes perform ownership checks before read, update, or delete.
-- Passwords are stored as bcrypt hashes only.
-- Existing plaintext passwords can be migrated with a dedicated script.
-- New users created by admin automatically receive their own template categories, budgets, and sample transactions.
-- Official financial summary formula:
+```bash
+bun run users:backfill-template
+```
+
+Backfill ini idempotent: hanya mengisi data template yang belum ada, tanpa menghapus atau mengganti data milik user.
+
+## Environment
+
+| Variable | Required | Keterangan |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | URL koneksi utama Prisma. Untuk Supabase pooler gunakan `?pgbouncer=true&connection_limit=1`. |
+| `DIRECT_DATABASE_URL` | Yes | Direct connection untuk migrasi atau operasi yang tidak lewat pooler. |
+| `JWT_SECRET` | Yes | Minimal 32 karakter acak. Placeholder value akan ditolak saat runtime. |
+| `OCR_SPACE_API_KEY` | No | Mengaktifkan OCR untuk fitur scan struk. |
+| `GROQ_API_KEY` | No | Mengaktifkan voice transcription dan AI transaction draft. |
+| `ENABLE_ACTIVE_USERS_METRIC` | No | Set `false` untuk mematikan output demo `/api/users/active`. |
+
+## Security & Data Model
+
+- `Transaction`, `Category`, `Budget`, dan `UserSettings` selalu terikat ke satu user lewat `userId`.
+- Route privat mengidentifikasi user dari auth cookie dan memfilter query sesuai ownership.
+- Route detail melakukan ownership check sebelum read, update, atau delete.
+- Password disimpan sebagai hash bcrypt saja.
+- User baru yang dibuat admin otomatis diprovision dengan kategori default, budget bulan berjalan, sample transaction, dan user settings.
+- Formula summary resmi:
   `balance = income - expenses - savings`
-- Official savings rate formula:
+- Formula savings rate resmi:
   `savingsRate = savings / income * 100`
 
-## Import format
+<details>
+  <summary><strong>Import, OCR, dan AI</strong></summary>
 
-- Batch import accepts `.csv`, `.xlsx`, and `.xlsm`.
-- File size is limited to 5MB.
-- Each import is capped at 1000 rows.
-- Import rejects dangerous spreadsheet formula prefixes and invalid dates/amounts.
-
-## OCR and AI input
-
-- `Scan Struk` uses OCR.Space to extract receipt text, then prepares an editable transaction draft.
-- `Tambah Transaksi` now supports manual input or AI-assisted draft generation from chat/voice.
-- Voice input is transcribed server-side through Groq before being turned into a transaction draft.
+  - Import batch menerima `.csv`, `.xlsx`, dan `.xlsm`.
+  - Ukuran file maksimal 5MB.
+  - Maksimal 1000 baris per import.
+  - Import menolak formula spreadsheet berbahaya serta tanggal dan nominal yang tidak valid.
+  - `Scan Struk` memakai OCR.Space untuk mengekstrak teks struk lalu membentuk draft transaksi yang bisa diedit.
+  - `Tambah Transaksi` mendukung input manual atau draft hasil chat/voice.
+  - Voice input ditranskrip server-side via Groq sebelum diubah menjadi draft transaksi.
+</details>
 
 ## Scripts
 
-```bash
-bun run dev
-bun run build
-bun run lint
-bun run test
-bun run db:generate
-bun run db:push
-bun run db:seed
-bun run admin:bootstrap
-bun run users:backfill-template
-bun run passwords:migrate
-```
+| Command | Fungsi |
+| --- | --- |
+| `bun run dev` | Menjalankan app di mode development |
+| `bun run build` | Build production |
+| `bun run lint` | Validasi lint |
+| `bun run test` | Menjalankan test Node yang tersedia |
+| `bun run db:generate` | Generate Prisma client |
+| `bun run db:push` | Push schema ke database |
+| `bun run db:seed` | Seed data manual jika diperlukan |
+| `bun run admin:bootstrap` | Membuat admin pertama dan template data per-user |
+| `bun run users:backfill-template` | Backfill template data user lama |
+| `bun run passwords:migrate` | Migrasi password plaintext lama ke bcrypt |
 
-## Supabase bootstrap
+## Supabase Bootstrap
 
-For a fresh Supabase database:
+Untuk database Supabase yang masih kosong:
 
-1. Apply [`supabase-schema.sql`](./supabase-schema.sql) or run `bun run db:push`.
-2. Set `ADMIN_BOOTSTRAP_*` env vars.
-3. Run `bun run admin:bootstrap`.
-4. If you must bootstrap from Supabase SQL Editor, start from [`scripts/supabase-bootstrap-admin.template.sql`](./scripts/supabase-bootstrap-admin.template.sql) and replace the placeholders locally.
+1. Terapkan [`supabase-schema.sql`](./supabase-schema.sql) atau jalankan `bun run db:push`.
+2. Isi environment `ADMIN_BOOTSTRAP_*`.
+3. Jalankan `bun run admin:bootstrap`.
+4. Jika harus bootstrap dari Supabase SQL Editor, mulai dari [`scripts/supabase-bootstrap-admin.template.sql`](./scripts/supabase-bootstrap-admin.template.sql) lalu ganti placeholder-nya secara lokal.
 
-`supabase-schema.sql` intentionally does not insert any default admin or shared sample data. Bootstrap provisioning happens through the app layer so each user gets isolated template data under their own `userId`.
+`supabase-schema.sql` sengaja tidak memasukkan default admin ataupun sample data global. Seluruh provisioning dilakukan di layer aplikasi supaya tiap user menerima data template yang tetap terisolasi.
 
-## Optional feature flags
+## Password Migration
 
-- `ENABLE_ACTIVE_USERS_METRIC=false`
-  disables `/api/users/active` demo output and returns a deterministic response.
-
-## Password migration
-
-If older environments still contain plaintext passwords, run:
+Jika environment lama masih menyimpan password plaintext:
 
 ```bash
 bun run passwords:migrate
 ```
 
-After migration, plaintext login fallback is no longer accepted.
+Setelah migrasi, fallback login plaintext tidak lagi diterima.

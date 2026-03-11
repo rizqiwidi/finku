@@ -18,6 +18,7 @@ import {
   WandSparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DateInput } from '@/components/ui/date-input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -377,6 +378,37 @@ export function AddTransactionDialog({
       form.setValue('categoryId', resolvedCategoryId, { shouldDirty: true, shouldValidate: true });
     }
   }, [activeDraft, activeDraftIndex, categories, form, inputMode]);
+
+  useEffect(() => {
+    if (!categories?.length) {
+      return;
+    }
+
+    const currentCategoryId = form.getValues('categoryId');
+    const categoryStillValid = categories.some(
+      (category) => category.id === currentCategoryId && category.type === selectedType
+    );
+
+    if (categoryStillValid) {
+      return;
+    }
+
+    const nextCategoryId =
+      (inputMode === 'ai' && activeDraft
+        ? resolveDraftCategoryId(categories, { ...activeDraft, type: selectedType })
+        : null) ??
+      filteredCategories[0]?.id ??
+      '';
+
+    if (nextCategoryId === currentCategoryId) {
+      return;
+    }
+
+    form.setValue('categoryId', nextCategoryId, {
+      shouldDirty: Boolean(currentCategoryId),
+      shouldValidate: true,
+    });
+  }, [activeDraft, categories, filteredCategories, form, inputMode, selectedType]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (isEditing) {
@@ -1015,9 +1047,8 @@ export function AddTransactionDialog({
                   <Label htmlFor="date" className="text-sm font-medium">
                     Tanggal
                   </Label>
-                  <Input
+                  <DateInput
                     id="date"
-                    type="date"
                     value={formatDateInputValue(watchedDate)}
                     onChange={(event) =>
                       form.setValue('date', parseDateInputValue(event.target.value), {
@@ -1025,7 +1056,6 @@ export function AddTransactionDialog({
                         shouldValidate: true,
                       })
                     }
-                    className="h-11"
                   />
                 </div>
 

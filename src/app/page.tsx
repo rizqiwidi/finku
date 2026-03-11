@@ -23,6 +23,7 @@ import { BudgetProgress } from '@/components/finance/budget-progress';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
 import { TransactionsTable } from '@/components/transactions/transactions-table';
 import { SettingsDialog } from '@/components/settings/settings-dialog';
+import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ExcelUpload } from '@/components/finance/excel-upload';
 import { ReceiptScanDialog } from '@/components/finance/receipt-scan-dialog';
@@ -91,9 +92,12 @@ export default function Home() {
           <div className="absolute right-[-6rem] top-10 h-64 w-64 rounded-full bg-teal-300/25 blur-3xl dark:bg-cyan-500/15" />
           <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
         </div>
-        <div className="relative p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
-          <LayoutDashboard className="w-8 h-8 text-white" />
-        </div>
+        <BrandLogo
+          className="relative h-20 w-20"
+          imageClassName="drop-shadow-[0_20px_36px_rgba(15,23,42,0.08)] dark:drop-shadow-[0_20px_36px_rgba(15,23,42,0.28)]"
+          priority
+          sizes="80px"
+        />
         <div className="relative flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           <span className="text-sm text-muted-foreground">Memuat...</span>
@@ -122,13 +126,17 @@ export default function Home() {
         <div className="flex items-start gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <motion.div 
-              className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/30"
+              className="shrink-0"
               whileHover={{ scale: 1.05 }}
             >
-              <LayoutDashboard className="w-5 h-5 text-white" />
+              <BrandLogo
+                className="h-12 w-12"
+                imageClassName="drop-shadow-[0_12px_24px_rgba(15,23,42,0.08)] dark:drop-shadow-[0_12px_24px_rgba(15,23,42,0.22)]"
+                sizes="48px"
+              />
             </motion.div>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              <h1 className="text-xl font-black tracking-tight text-foreground">
                 Finku
               </h1>
               <p className="truncate text-xs text-muted-foreground">
@@ -293,11 +301,13 @@ export default function Home() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                   >
-                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
-                      <LayoutDashboard className="w-5 h-5 text-white" />
-                    </div>
+                    <BrandLogo
+                      className="h-10 w-10"
+                      imageClassName="drop-shadow-[0_10px_20px_rgba(15,23,42,0.08)] dark:drop-shadow-[0_10px_20px_rgba(15,23,42,0.2)]"
+                      sizes="40px"
+                    />
                     <div>
-                      <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+                      <h1 className="text-lg font-black tracking-tight text-foreground">
                         Finku
                       </h1>
                       <p className="text-xs text-muted-foreground">
@@ -308,11 +318,13 @@ export default function Home() {
                 )}
 
                 <div className="lg:hidden flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
-                    <LayoutDashboard className="w-5 h-5 text-white" />
-                  </div>
+                  <BrandLogo
+                    className="h-10 w-10"
+                    imageClassName="drop-shadow-[0_10px_20px_rgba(15,23,42,0.08)] dark:drop-shadow-[0_10px_20px_rgba(15,23,42,0.2)]"
+                    sizes="40px"
+                  />
                   <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+                    <h1 className="text-lg font-black tracking-tight text-foreground">
                       Finku
                     </h1>
                     <p className="text-xs text-muted-foreground">

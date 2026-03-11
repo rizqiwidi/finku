@@ -134,6 +134,20 @@
   .budget-allocation-muted {
     @apply rounded-xl border border-border bg-muted/70 text-foreground shadow-sm;
   }
+
+  .date-input-native {
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .date-input-native::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
+  .date-input-native::-webkit-clear-button,
+  .date-input-native::-webkit-inner-spin-button {
+    display: none;
+  }
 }
 
 /* Custom scrollbar for dark mode */
