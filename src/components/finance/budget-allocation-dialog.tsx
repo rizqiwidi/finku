@@ -7,11 +7,9 @@ import {
   Calculator,
   Check,
   Loader2,
-  PiggyBank,
   RotateCcw,
   Sparkles,
   Settings2,
-  TrendingDown,
   TrendingUp,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -238,9 +236,35 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
   const activeSectionItems = activeSection === 'savings' ? savingsCategories : categories;
   const allocatedAmountValue = Math.round((incomeValue * normalizedTotalAllocated) / 100);
   const remainingAmountValue = Math.round((incomeValue * remainingPercentage) / 100);
-  const configuredCategoriesCount =
-    categories.filter((category) => category.allocationPercentage > 0).length +
-    savingsCategories.filter((category) => category.allocationPercentage > 0).length;
+  const activeExpenseCount = categories.filter((category) => category.allocationPercentage > 0).length;
+  const activeSavingsCount = savingsCategories.filter((category) => category.allocationPercentage > 0).length;
+  const configuredCategoriesCount = activeExpenseCount + activeSavingsCount;
+  const totalCategoriesCount = categories.length + savingsCategories.length;
+  const totalAllocatedLabel = normalizedTotalAllocated.toFixed(2).replace('.', ',');
+  const remainingPercentageLabel = remainingPercentage.toFixed(2).replace('.', ',');
+  const expensePercentageLabel = totalExpensePercentage.toFixed(2).replace('.', ',');
+  const savingsPercentageLabel = totalSavingsPercentage.toFixed(2).replace('.', ',');
+  const statusTone = isOverAllocated ? 'rose' : isFullyAllocated ? 'emerald' : 'amber';
+  const statusLabel = isOverAllocated
+    ? 'Melebihi 100%'
+    : isFullyAllocated
+      ? 'Pas 100%'
+      : `${remainingPercentageLabel}% belum dialokasikan`;
+  const activeSectionTitle =
+    activeSection === 'savings'
+      ? 'Sisihkan ruang untuk tabungan dan tujuan finansial.'
+      : 'Prioritaskan kebutuhan rutin dan pengeluaran penting.';
+  const activeSectionDescription =
+    activeSection === 'savings'
+      ? 'Atur dana darurat, investasi, atau target khusus tanpa mengganggu kebutuhan bulanan.'
+      : 'Geser slider atau isi persen secara langsung. Semua perubahan langsung menghitung sisa anggaran.';
+  const saveHelperText = isSaving
+    ? 'Menyimpan perubahan alokasi bulan ini...'
+    : isOverAllocated
+      ? 'Total alokasi melebihi 100%. Kurangi beberapa kategori sebelum menyimpan.'
+      : isFullyAllocated
+        ? 'Alokasi sudah pas 100% dan siap disimpan.'
+        : 'Perubahan bisa disimpan sekarang, lalu Anda lanjutkan penyesuaian nanti bila diperlukan.';
 
   const setCategoryAllocation = (
     categoryId: string,
@@ -448,85 +472,56 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
   };
 
   const renderAllocationSection = (
-    title: string,
-    subtitle: string,
     items: Category[],
     inputs: Record<string, string>,
     isSavings: boolean
   ) => (
-    <div className="rounded-[28px] border border-border bg-card/92 p-4 shadow-sm">
-      <div className="mb-4 flex flex-col gap-3 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div
-            className={cn(
-              'rounded-2xl p-2.5 text-white shadow-lg',
-              isSavings
-                ? 'bg-gradient-to-br from-amber-500 to-orange-500'
-                : 'bg-gradient-to-br from-rose-500 to-red-500'
-            )}
-          >
-            {isSavings ? (
-              <PiggyBank className="h-4 w-4" />
-            ) : (
-              <TrendingDown className="h-4 w-4" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            <p className="text-xs leading-relaxed text-muted-foreground">{subtitle}</p>
-          </div>
+    <div className="space-y-3">
+      {items.length === 0 ? (
+        <div className="rounded-[26px] border border-dashed border-border bg-muted/35 p-5 text-sm text-muted-foreground">
+          {isSavings
+            ? 'Belum ada kategori tabungan yang bisa diatur untuk bulan ini.'
+            : 'Belum ada kategori pengeluaran yang bisa diatur untuk bulan ini.'}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <BadgePill
-            tone="emerald"
-            label={`${items.filter((item) => item.allocationPercentage > 0).length}/${items.length} aktif`}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-xl px-2.5 text-muted-foreground"
-            onClick={() => resetAllocations(isSavings ? 'savings' : 'expense')}
-            disabled={items.length === 0}
-          >
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Reset tab ini
-          </Button>
-        </div>
-      </div>
+      ) : (
+        items.map((category, index) => {
+          const IconComponent = getCategoryIconComponent(category.icon);
+          const allocatedAmount = Math.round((incomeValue * category.allocationPercentage) / 100);
+          const isAllocated = category.allocationPercentage > 0;
 
-      <div className="space-y-3">
-        {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-            Belum ada kategori untuk bagian ini.
-          </div>
-        ) : (
-          items.map((category, index) => {
-            const IconComponent = getCategoryIconComponent(category.icon);
-            const allocatedAmount = Math.round((incomeValue * category.allocationPercentage) / 100);
-
-            return (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className="rounded-2xl border border-border bg-muted/25 p-3 transition-colors hover:border-primary/30"
-              >
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr),88px] sm:items-center">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <div
-                      className="rounded-xl p-2"
-                      style={{ backgroundColor: `${category.color}20` }}
-                    >
-                      <IconComponent className="h-4 w-4" style={{ color: category.color }} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrency(allocatedAmount)}</p>
-                    </div>
+          return (
+            <motion.div
+              key={category.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03 }}
+              className={cn(
+                'rounded-[26px] border p-4 transition-all',
+                isAllocated
+                  ? 'border-border bg-background shadow-sm'
+                  : 'border-border/80 bg-muted/25 hover:border-border'
+              )}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className="rounded-2xl p-2.5 shadow-sm"
+                    style={{ backgroundColor: `${category.color}18` }}
+                  >
+                    <IconComponent className="h-4 w-4" style={{ color: category.color }} />
                   </div>
-                  <div className="w-full">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{category.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {isAllocated
+                        ? `Estimasi ${formatCurrency(allocatedAmount)}`
+                        : 'Belum dialokasikan'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full sm:w-[112px]">
+                  <div className="relative">
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -536,29 +531,29 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                       }
                       onBlur={() => normalizePercentageInput(category.id, isSavings)}
                       placeholder="0"
-                      className="h-10 rounded-xl border-border bg-background text-center text-sm font-semibold"
+                      className="h-11 rounded-2xl border-border bg-background pr-8 text-right text-sm font-semibold"
                     />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                      %
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="mt-2 flex items-center gap-3">
-                  <Slider
-                    value={[category.allocationPercentage]}
-                    onValueChange={(value) => handleSliderChange(category.id, value, isSavings)}
-                    min={0}
-                    max={100}
-                    step={0.01}
-                    className="flex-1"
-                  />
-                  <span className="w-11 text-right text-xs font-medium text-muted-foreground">
-                    {formatPercentDisplay(category.allocationPercentage) || '0'}%
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })
-        )}
-      </div>
+              <div className="mt-3">
+                <Slider
+                  value={[category.allocationPercentage]}
+                  onValueChange={(value) => handleSliderChange(category.id, value, isSavings)}
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  className="w-full"
+                />
+              </div>
+            </motion.div>
+          );
+        })
+      )}
     </div>
   );
 
@@ -572,15 +567,18 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-w-[1120px]">
-        <DialogHeader className="shrink-0 border-b border-border bg-gradient-to-r from-violet-500/10 to-sky-500/10 px-5 py-5">
-          <div className="flex items-center gap-3 pr-8">
-            <div className="rounded-2xl bg-gradient-to-br from-violet-500 to-sky-600 p-2.5 shadow-lg">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-h-[92vh] sm:max-w-[1120px]">
+        <DialogHeader className="relative isolate shrink-0 overflow-hidden border-b border-border bg-background px-5 py-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_36%)]" />
+          <div className="relative flex items-start gap-3 pr-8">
+            <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 shadow-lg shadow-emerald-500/20">
               <Calculator className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <DialogTitle className="text-lg font-bold">Atur Alokasi Anggaran</DialogTitle>
-              <p className="text-sm text-muted-foreground">{monthName}</p>
+            <div className="space-y-1">
+              <DialogTitle className="text-lg font-bold">Atur Anggaran Bulanan</DialogTitle>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Tetapkan pemasukan dan bagikan 100% ke pos pengeluaran atau tabungan untuk {monthName}.
+              </p>
             </div>
           </div>
         </DialogHeader>
@@ -590,9 +588,9 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 xl:grid xl:grid-cols-[300px,minmax(0,1fr)] xl:overflow-hidden">
-            <div className="space-y-3 xl:sticky xl:top-0 xl:max-h-full">
-              <div className="rounded-3xl border border-border bg-muted/40 p-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-5 xl:grid xl:grid-cols-[320px,minmax(0,1fr)] xl:overflow-hidden">
+            <div className="shrink-0 space-y-4 xl:sticky xl:top-0 xl:max-h-full">
+              <div className="rounded-[30px] border border-emerald-500/15 bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-foreground">
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
                   <span className="text-sm font-semibold">Pemasukan Bulanan</span>
@@ -606,28 +604,45 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                     value={formatIncomeDisplay(monthlyIncome)}
                     onChange={(event) => handleIncomeChange(event.target.value)}
                     placeholder="0"
-                    className="h-11 rounded-2xl border-border bg-background pl-10 text-right text-sm font-semibold"
+                    className="h-12 rounded-2xl border-border bg-background pl-10 text-right text-base font-semibold"
                   />
                 </div>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  Semua estimasi nominal kategori dihitung otomatis dari pemasukan ini.
+                </p>
               </div>
 
-              <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <Label className="text-sm font-semibold text-foreground">Total Alokasi</Label>
-                  <span
-                    className={cn(
-                      'text-sm font-bold',
-                      isOverAllocated
-                        ? 'text-destructive'
-                        : isFullyAllocated
-                          ? 'text-emerald-600'
-                          : 'text-amber-600'
-                    )}
-                  >
-                    {normalizedTotalAllocated.toFixed(2).replace('.', ',')}%
-                  </span>
+              <div className="rounded-[30px] border border-border bg-card/95 p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Label className="text-sm font-semibold text-foreground">Ringkasan Alokasi</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Pantau progres total tanpa perlu berpindah tab.
+                    </p>
+                  </div>
+                  <BadgePill tone={statusTone} label={statusLabel} />
                 </div>
-                <div className="h-3 overflow-hidden rounded-full bg-muted">
+
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-3xl font-black tracking-tight text-foreground">
+                      {totalAllocatedLabel}%
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sudah dialokasikan dari pemasukan bulanan.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-right">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Sisa
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {formatCurrency(remainingAmountValue)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(normalizedTotalAllocated, 100)}%` }}
@@ -642,57 +657,39 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                     )}
                   />
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <motion.div
-                    whileHover={{ y: -1 }}
-                    className="rounded-2xl bg-muted/60 px-3 py-2"
-                  >
-                    <p>Terpakai</p>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-2xl bg-muted/55 px-3 py-3">
+                    <p className="text-muted-foreground">Teralokasi</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {formatCurrency(allocatedAmountValue)}
                     </p>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ y: -1 }}
-                    className="rounded-2xl bg-muted/60 px-3 py-2"
-                  >
-                    <p>Sisa</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {formatCurrency(remainingAmountValue)}
-                    </p>
-                  </motion.div>
-                </div>
-                <div className="mt-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">
-                      {configuredCategoriesCount} kategori aktif
-                    </span>
-                    <BadgePill
-                      tone={
-                        isOverAllocated ? 'rose' : isFullyAllocated ? 'emerald' : 'amber'
-                      }
-                      label={
-                        isOverAllocated
-                          ? 'Melebihi 100%'
-                          : isFullyAllocated
-                            ? 'Pas 100%'
-                            : `${remainingPercentage.toFixed(2).replace('.', ',')}% sisa`
-                      }
-                    />
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Pengeluaran {totalExpensePercentage.toFixed(2).replace('.', ',')}% dan tabungan{' '}
-                    {totalSavingsPercentage.toFixed(2).replace('.', ',')}%.
-                  </p>
+                  <div className="rounded-2xl bg-muted/55 px-3 py-3">
+                    <p className="text-muted-foreground">Kategori aktif</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {configuredCategoriesCount}/{totalCategoriesCount}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-muted/55 px-3 py-3">
+                    <p className="text-muted-foreground">Belum terisi</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {remainingPercentageLabel}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-border/70 bg-background/80 px-3 py-3 text-xs text-muted-foreground">
+                  Distribusi saat ini: pengeluaran {expensePercentageLabel}% dan tabungan {savingsPercentageLabel}%.
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
+              <div className="rounded-[30px] border border-border bg-card/92 p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Settings2 className="h-4 w-4 text-sky-500" />
                   Aksi Cepat
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                <div className="grid gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -714,12 +711,87 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                     Reset semua alokasi
                   </Button>
                 </div>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  Ratakan sisa hanya berlaku untuk tab yang sedang dibuka.
+                </p>
               </div>
+            </div>
 
+            <div className="min-h-0 shrink-0 overflow-visible xl:flex xl:min-h-0 xl:flex-col">
+              <Tabs
+                value={activeSection}
+                onValueChange={(value) => setActiveSection(value as 'expense' | 'savings')}
+                className="flex min-h-0 flex-col rounded-[30px] border border-border bg-card/95 p-4 shadow-sm xl:h-full xl:overflow-hidden xl:p-5"
+              >
+                <div className="shrink-0 space-y-4 border-b border-border/70 pb-4">
+                  <TabsList className="grid h-auto w-full grid-cols-2 rounded-[22px] bg-muted/70 p-1.5">
+                    <TabsTrigger
+                      value="expense"
+                      className="h-auto min-h-[72px] flex-col items-start justify-center rounded-[18px] px-4 py-3 text-left hover:translate-y-0 data-[state=active]:border-rose-500/35 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                    >
+                      <span className="text-sm font-semibold">Pengeluaran</span>
+                      <span className="text-xs opacity-80">Kebutuhan rutin dan gaya hidup</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="savings"
+                      className="h-auto min-h-[72px] flex-col items-start justify-center rounded-[18px] px-4 py-3 text-left hover:translate-y-0 data-[state=active]:border-amber-500/35 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                    >
+                      <span className="text-sm font-semibold">Tabungan</span>
+                      <span className="text-xs opacity-80">Dana tujuan, investasi, dan cadangan</span>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">{activeSectionTitle}</p>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {activeSectionDescription}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 rounded-2xl px-3 text-muted-foreground"
+                      onClick={() => resetAllocations(activeSection === 'savings' ? 'savings' : 'expense')}
+                      disabled={activeSectionItems.length === 0}
+                    >
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                      Reset tab ini
+                    </Button>
+                  </div>
+                </div>
+
+                <TabsContent value="expense" className="mt-0 min-h-0 flex-1 overflow-visible pt-4 xl:overflow-y-auto xl:pr-1">
+                  {renderAllocationSection(categories, expenseInputs, false)}
+                </TabsContent>
+                <TabsContent value="savings" className="mt-0 min-h-0 flex-1 overflow-visible pt-4 xl:overflow-y-auto xl:pr-1">
+                  {renderAllocationSection(savingsCategories, savingsInputs, true)}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        )}
+
+        {!isLoading ? (
+          <div className="shrink-0 border-t border-border bg-card/95 px-5 py-4 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p
+                className={cn(
+                  'text-sm',
+                  isOverAllocated
+                    ? 'text-rose-500'
+                    : isFullyAllocated
+                      ? 'text-emerald-600'
+                      : 'text-muted-foreground'
+                )}
+              >
+                {saveHelperText}
+              </p>
               <Button
                 onClick={handleSaveAllocation}
                 disabled={isSaving || isOverAllocated}
-                className="h-11 w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600"
+                className="h-11 w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600 sm:w-auto sm:min-w-[220px]"
               >
                 {isSaving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -729,56 +801,8 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                 Simpan Alokasi
               </Button>
             </div>
-
-            <div className="min-h-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
-              <Tabs
-                value={activeSection}
-                onValueChange={(value) => setActiveSection(value as 'expense' | 'savings')}
-                className="flex min-h-0 flex-col gap-4 xl:h-full"
-              >
-                <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-muted/80 p-1.5">
-                  <TabsTrigger
-                    value="expense"
-                    className="rounded-xl hover:translate-y-0 data-[state=active]:border-rose-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
-                  >
-                    <span className="truncate">Pengeluaran</span>
-                    <span className="ml-2 text-xs opacity-80">
-                      {totalExpensePercentage.toFixed(0)}%
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="savings"
-                    className="rounded-xl hover:translate-y-0 data-[state=active]:border-amber-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
-                  >
-                    <span className="truncate">Tabungan</span>
-                    <span className="ml-2 text-xs opacity-80">
-                      {totalSavingsPercentage.toFixed(0)}%
-                    </span>
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="expense" className="mt-0 min-h-0 flex-1 overflow-visible xl:overflow-y-auto xl:pr-1">
-                  {renderAllocationSection(
-                    'Kategori Pengeluaran',
-                    'Pilih pos belanja yang paling penting, lalu geser atau isi persen secara cepat.',
-                    categories,
-                    expenseInputs,
-                    false
-                  )}
-                </TabsContent>
-                <TabsContent value="savings" className="mt-0 min-h-0 flex-1 overflow-visible xl:overflow-y-auto xl:pr-1">
-                  {renderAllocationSection(
-                    'Kategori Tabungan',
-                    'Sisihkan tabungan, investasi, atau dana tujuan tanpa membuat layar terlalu padat.',
-                    savingsCategories,
-                    savingsInputs,
-                    true
-                  )}
-                </TabsContent>
-              </Tabs>
-            </div>
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
