@@ -549,26 +549,27 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
         )}
       </DialogTrigger>
       <DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-h-[92vh] sm:max-w-[1120px]">
-        <DialogHeader className="relative isolate shrink-0 overflow-hidden border-b border-border bg-background px-5 py-5">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_36%)]" />
-          <div className="relative flex items-start gap-3 pr-8">
-            <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 shadow-lg shadow-emerald-500/20">
-              <Calculator className="h-5 w-5 text-white" />
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <DialogHeader className="relative isolate overflow-hidden border-b border-border bg-background px-5 py-5">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_36%)]" />
+            <div className="relative flex items-start gap-3 pr-8">
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 shadow-lg shadow-emerald-500/20">
+                <Calculator className="h-5 w-5 text-white" />
+              </div>
+              <div className="space-y-1">
+                <DialogTitle className="text-lg font-bold">Atur Anggaran Bulanan</DialogTitle>
+                <p className="text-sm text-muted-foreground">{monthName}</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <DialogTitle className="text-lg font-bold">Atur Anggaran Bulanan</DialogTitle>
-              <p className="text-sm text-muted-foreground">{monthName}</p>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        {isLoading ? (
-          <div className="flex flex-1 items-center justify-center py-14">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-5 xl:grid xl:grid-cols-[320px,minmax(0,1fr)]">
-            <div className="shrink-0 space-y-4 xl:sticky xl:top-0 xl:max-h-full">
+          {isLoading ? (
+            <div className="flex flex-1 items-center justify-center py-14">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 p-5 xl:grid xl:grid-cols-[320px,minmax(0,1fr)]">
+              <div className="space-y-4">
               <div className="rounded-[30px] border border-emerald-500/15 bg-gradient-to-br from-emerald-500/10 via-background to-sky-500/10 p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-foreground">
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -593,20 +594,10 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                   <Label className="text-sm font-semibold text-foreground">Ringkasan Alokasi</Label>
                 </div>
 
-                <div className="mt-4 flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-3xl font-black tracking-tight text-foreground">
-                      {totalAllocatedLabel}%
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-right">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Sisa
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {formatCurrency(remainingAmountValue)}
-                    </p>
-                  </div>
+                <div className="mt-4">
+                  <p className="text-3xl font-black tracking-tight text-foreground">
+                    {totalAllocatedLabel}%
+                  </p>
                 </div>
 
                 <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
@@ -644,74 +635,75 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                   Pengeluaran {expensePercentageLabel}% dan tabungan {savingsPercentageLabel}%.
                 </p>
               </div>
-            </div>
+              </div>
 
-            <div className="min-h-0 shrink-0 overflow-visible xl:flex xl:min-h-0 xl:flex-col">
-              <Tabs
-                value={activeSection}
-                onValueChange={(value) => setActiveSection(value as 'expense' | 'savings')}
-                className="flex min-h-0 flex-col rounded-[30px] border border-border bg-card/95 p-4 shadow-sm xl:p-5"
-              >
-                <div className="shrink-0 space-y-4 border-b border-border/70 pb-4">
-                  <TabsList className="grid h-auto w-full grid-cols-2 rounded-[22px] bg-muted/70 p-1.5">
-                    <TabsTrigger
-                      value="expense"
-                      className="h-auto min-h-[56px] rounded-[18px] px-4 py-3 text-sm font-semibold hover:translate-y-0 data-[state=active]:border-rose-500/35 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
-                    >
-                      Pengeluaran
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="savings"
-                      className="h-auto min-h-[56px] rounded-[18px] px-4 py-3 text-sm font-semibold hover:translate-y-0 data-[state=active]:border-amber-500/35 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
-                    >
-                      Tabungan
-                    </TabsTrigger>
-                  </TabsList>
+              <div className="min-h-0 shrink-0 overflow-visible">
+                <Tabs
+                  value={activeSection}
+                  onValueChange={(value) => setActiveSection(value as 'expense' | 'savings')}
+                  className="flex min-h-0 flex-col rounded-[30px] border border-border bg-card/95 p-4 shadow-sm xl:p-5"
+                >
+                  <div className="shrink-0 space-y-4 border-b border-border/70 pb-4">
+                    <TabsList className="grid h-auto w-full grid-cols-2 rounded-[22px] bg-muted/70 p-1.5">
+                      <TabsTrigger
+                        value="expense"
+                        className="h-auto min-h-[56px] rounded-[18px] px-4 py-3 text-sm font-semibold hover:translate-y-0 data-[state=active]:border-rose-500/35 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                      >
+                        Pengeluaran
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="savings"
+                        className="h-auto min-h-[56px] rounded-[18px] px-4 py-3 text-sm font-semibold hover:translate-y-0 data-[state=active]:border-amber-500/35 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                      >
+                        Tabungan
+                      </TabsTrigger>
+                    </TabsList>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 rounded-2xl"
-                      onClick={() => distributeRemainingToSection(activeSection === 'savings')}
-                      disabled={remainingPercentage <= 0 || activeSectionItems.length === 0}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Ratakan sisa
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-10 rounded-2xl text-muted-foreground"
-                      onClick={() => resetAllocations(activeSection === 'savings' ? 'savings' : 'expense')}
-                      disabled={activeSectionItems.length === 0}
-                    >
-                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                      Reset tab ini
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-10 rounded-2xl text-muted-foreground"
-                      onClick={() => resetAllocations('all')}
-                      disabled={normalizedTotalAllocated === 0}
-                    >
-                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                      Reset semua
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-2xl"
+                        onClick={() => distributeRemainingToSection(activeSection === 'savings')}
+                        disabled={remainingPercentage <= 0 || activeSectionItems.length === 0}
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Ratakan sisa
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-10 rounded-2xl text-muted-foreground"
+                        onClick={() => resetAllocations(activeSection === 'savings' ? 'savings' : 'expense')}
+                        disabled={activeSectionItems.length === 0}
+                      >
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                        Reset tab ini
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-10 rounded-2xl text-muted-foreground"
+                        onClick={() => resetAllocations('all')}
+                        disabled={normalizedTotalAllocated === 0}
+                      >
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                        Reset semua
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <TabsContent value="expense" className="mt-0 min-h-0 flex-1 overflow-visible pt-4">
-                  {renderAllocationSection(categories, expenseInputs, false)}
-                </TabsContent>
-                <TabsContent value="savings" className="mt-0 min-h-0 flex-1 overflow-visible pt-4">
-                  {renderAllocationSection(savingsCategories, savingsInputs, true)}
-                </TabsContent>
-              </Tabs>
+                  <TabsContent value="expense" className="mt-0 min-h-0 flex-1 overflow-visible pt-4">
+                    {renderAllocationSection(categories, expenseInputs, false)}
+                  </TabsContent>
+                  <TabsContent value="savings" className="mt-0 min-h-0 flex-1 overflow-visible pt-4">
+                    {renderAllocationSection(savingsCategories, savingsInputs, true)}
+                  </TabsContent>
+                </Tabs>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {!isLoading ? (
           <div className="shrink-0 border-t border-border bg-card/95 px-5 py-4 backdrop-blur supports-[backdrop-filter]:bg-card/80">
