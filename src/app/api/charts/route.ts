@@ -30,9 +30,7 @@ export async function GET(request: Request) {
               lte: periodEnd,
             },
           },
-          orderBy: {
-            date: 'desc',
-          },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
           select: {
             date: true,
           },

@@ -132,9 +132,7 @@ export async function GET(request: Request) {
         select: {
           id: true,
         },
-        orderBy: {
-          date: 'desc',
-        },
+        orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       });
 
       return createPrivateReadResponse({
@@ -172,9 +170,7 @@ export async function GET(request: Request) {
           include: {
             category: true,
           },
-          orderBy: {
-            date: 'desc',
-          },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
           skip: (normalizedPage - 1) * normalizedPageSize,
           take: normalizedPageSize,
         }),
@@ -195,9 +191,7 @@ export async function GET(request: Request) {
       include: {
         category: true,
       },
-      orderBy: {
-        date: 'desc',
-      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     });
 
     return createPrivateReadResponse(transactions);

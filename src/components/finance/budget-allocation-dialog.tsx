@@ -550,14 +550,16 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
       </DialogTrigger>
       <DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-h-[92vh] sm:max-w-[1120px]">
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
-          <DialogHeader className="relative isolate overflow-hidden border-b border-border bg-background px-5 py-5">
+          <DialogHeader className="relative isolate border-b border-border bg-background px-5 py-5 pr-14 sm:pr-16">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_36%)]" />
-            <div className="relative flex items-start gap-3 pr-8">
-              <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 shadow-lg shadow-emerald-500/20">
+            <div className="relative flex min-w-0 items-start gap-3">
+              <div className="shrink-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 shadow-lg shadow-emerald-500/20">
                 <Calculator className="h-5 w-5 text-white" />
               </div>
-              <div className="space-y-1">
-                <DialogTitle className="text-lg font-bold">Atur Anggaran Bulanan</DialogTitle>
+              <div className="min-w-0 space-y-1">
+                <DialogTitle className="text-lg font-bold leading-snug">
+                  Atur Anggaran Bulanan
+                </DialogTitle>
                 <p className="text-sm text-muted-foreground">{monthName}</p>
               </div>
             </div>
