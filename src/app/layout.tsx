@@ -19,9 +19,9 @@ const geistMono = Geist_Mono({
 });
 
 const SITE_NAME = "Finku";
-const SITE_TITLE = "Finku - Personal Finance Manager";
+const SITE_TITLE = "Finku | Manajemen Keuangan Pribadi";
 const SITE_DESCRIPTION =
-  "Kelola keuangan pribadi dengan lebih rapi lewat tracking pemasukan, pengeluaran, anggaran, dan insight finansial dalam satu aplikasi.";
+  "Catat pemasukan dan pengeluaran, atur anggaran bulanan, scan struk OCR, dan import transaksi lebih cepat di Finku.";
 const SITE_KEYWORDS = [
   "finku",
   "finance",
@@ -34,7 +34,7 @@ const SITE_KEYWORDS = [
   "anggaran",
   "catatan keuangan",
 ];
-const OG_IMAGE_PATH = "/opengraph-image";
+const OG_IMAGE_PATH = "/opengraph-image?v=logo-v2";
 
 function resolveMetadataBase(headerList: { get(name: string): string | null }) {
   const host =
@@ -96,7 +96,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: OG_IMAGE_PATH,
           width: 1200,
           height: 630,
-          alt: "Finku Financial Management",
+          alt: "Logo Finku",
         },
       ],
     },

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Finku Financial Management',
     short_name: 'Finku',
     description:
-      'Kelola pemasukan, pengeluaran, anggaran, dan target finansial dalam satu aplikasi modern.',
+      'Catat pemasukan dan pengeluaran, atur anggaran, scan struk, dan import transaksi di Finku.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f7fbf8',
