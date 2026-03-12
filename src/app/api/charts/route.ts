@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
+import { createPrivateReadResponse } from '@/lib/private-read-response';
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'monthly', 'category', 'trend'
     const month = searchParams.get('month');
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
         const periodEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59);
         const latestTransaction = await prisma.transaction.findFirst({
           where: {
-            userId: user.id,
+            userId: auth.userId,
             date: {
               gte: periodStart,
               lte: periodEnd,
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
 
         const transactions = await prisma.transaction.findMany({
           where: {
-            userId: user.id,
+            userId: auth.userId,
             date: {
               gte: rangeStart,
               lte: rangeEnd,
@@ -97,7 +98,9 @@ export async function GET(request: Request) {
           }
         }
 
-        return NextResponse.json(hourlyData.map(({ key, ...item }) => item));
+        return createPrivateReadResponse(
+          hourlyData.map(({ key, ...item }) => item)
+        );
       }
 
       if (normalizedGranularity === 'day') {
@@ -106,7 +109,7 @@ export async function GET(request: Request) {
         const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
         const transactions = await prisma.transaction.findMany({
           where: {
-            userId: user.id,
+            userId: auth.userId,
             date: {
               gte: rangeStart,
               lte: rangeEnd,
@@ -144,14 +147,16 @@ export async function GET(request: Request) {
           }
         }
 
-        return NextResponse.json(dailyData.map(({ key, ...item }) => item));
+        return createPrivateReadResponse(
+          dailyData.map(({ key, ...item }) => item)
+        );
       }
 
       const rangeStart = new Date(targetYear, 0, 1);
       const rangeEnd = new Date(targetYear, 11, 31, 23, 59, 59);
       const transactions = await prisma.transaction.findMany({
         where: {
-          userId: user.id,
+          userId: auth.userId,
           date: {
             gte: rangeStart,
             lte: rangeEnd,
@@ -191,7 +196,9 @@ export async function GET(request: Request) {
         }
       }
 
-      return NextResponse.json(monthlyData.map(({ key, ...item }) => item));
+      return createPrivateReadResponse(
+        monthlyData.map(({ key, ...item }) => item)
+      );
     }
 
     if (type === 'category') {
@@ -203,7 +210,7 @@ export async function GET(request: Request) {
 
       const categories = await prisma.category.findMany({
         where: {
-          userId: user.id,
+          userId: auth.userId,
           type: transactionType,
         },
         select: {
@@ -219,7 +226,7 @@ export async function GET(request: Request) {
           : await prisma.transaction.groupBy({
               by: ['categoryId'],
               where: {
-                userId: user.id,
+                userId: auth.userId,
                 type: transactionType,
                 categoryId: {
                   in: categories.map((category) => category.id),
@@ -254,7 +261,7 @@ export async function GET(request: Request) {
         }))
         .sort((a, b) => b.amount - a.amount);
 
-      return NextResponse.json(dataWithPercentage);
+      return createPrivateReadResponse(dataWithPercentage);
     }
 
     return NextResponse.json({ error: 'Invalid chart type' }, { status: 400 });

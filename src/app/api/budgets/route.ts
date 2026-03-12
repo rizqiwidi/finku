@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 import { getCurrentJakartaMonthYear, getJakartaMonthRange } from '@/lib/date-input';
+import { createPrivateReadResponse } from '@/lib/private-read-response';
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     // Get all budgets with their categories
     const budgets = await prisma.budget.findMany({
       where: {
-        userId: user.id,
+        userId: auth.userId,
         month: targetMonth,
         year: targetYear,
       },
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
               await prisma.transaction.groupBy({
                 by: ['categoryId'],
                 where: {
-                  userId: user.id,
+                  userId: auth.userId,
                   type: 'expense',
                   categoryId: {
                     in: budgets.map((budget) => budget.categoryId),
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
       year: budget.year,
     }));
 
-    return NextResponse.json(budgetProgress);
+    return createPrivateReadResponse(budgetProgress);
   } catch (error) {
     if (isAuthError(error)) {
       return NextResponse.json(

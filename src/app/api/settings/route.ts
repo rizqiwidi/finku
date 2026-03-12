@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 
 export async function GET() {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
 
     const settings = await prisma.userSettings.findUnique({
-      where: { userId: user.id },
+      where: { userId: auth.userId },
     });
 
     if (!settings) {
       // Create default settings if not exists
       const newSettings = await prisma.userSettings.create({
         data: {
-          userId: user.id,
+          userId: auth.userId,
           monthlyIncome: 0,
           savingsPercentage: 20,
         },
@@ -41,19 +41,19 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
 
     const body = await request.json();
     const { monthlyIncome, savingsPercentage } = body;
 
     const settings = await prisma.userSettings.upsert({
-      where: { userId: user.id },
+      where: { userId: auth.userId },
       update: {
         monthlyIncome: monthlyIncome ?? undefined,
         savingsPercentage: savingsPercentage ?? undefined,
       },
       create: {
-        userId: user.id,
+        userId: auth.userId,
         monthlyIncome: monthlyIncome ?? 0,
         savingsPercentage: savingsPercentage ?? 20,
       },

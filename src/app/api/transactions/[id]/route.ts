@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 import { getJakartaNowTimestamp, parseTransactionDateValue } from '@/lib/date-input';
 
 export async function GET(
@@ -8,13 +8,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { id } = await params;
 
     const transaction = await prisma.transaction.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: auth.userId,
       },
       include: {
         category: true,
@@ -50,7 +50,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { id } = await params;
     const body = await request.json();
     const { amount, description, categoryId, date, notes } = body;
@@ -59,7 +59,7 @@ export async function PUT(
     const existingTransaction = await prisma.transaction.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: auth.userId,
       },
       select: { id: true },
     });
@@ -74,7 +74,7 @@ export async function PUT(
     const category = await prisma.category.findFirst({
       where: {
         id: categoryId,
-        userId: user.id,
+        userId: auth.userId,
       },
     });
 
@@ -130,13 +130,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { id } = await params;
 
     const deleted = await prisma.transaction.deleteMany({
       where: {
         id,
-        userId: user.id,
+        userId: auth.userId,
       },
     });
 

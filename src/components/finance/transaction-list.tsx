@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MoreVertical, 
@@ -37,24 +37,45 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useTransactions, useDeleteTransaction, useDeleteTransactionsBulk } from '@/hooks/use-api';
+import { useDeleteTransaction, useDeleteTransactionsBulk } from '@/hooks/use-api';
 import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatCurrency, formatRelativeDate, cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
-import { AddTransactionDialog } from './add-transaction-dialog';
+import { DeferredAddTransactionDialog } from './deferred-add-transaction-dialog';
 
 interface TransactionListProps {
-  month: number;
-  year: number;
   onEdit: (transaction: Transaction) => void;
+  transactions?: Transaction[];
+  isLoading?: boolean;
+  totalCount?: number;
 }
 
-export function TransactionList({ month, year, onEdit }: TransactionListProps) {
-  const { data: transactions, isLoading } = useTransactions(month, year);
+export function TransactionList({
+  onEdit,
+  transactions,
+  isLoading = false,
+  totalCount,
+}: TransactionListProps) {
   const deleteMutation = useDeleteTransaction();
   const bulkDeleteMutation = useDeleteTransactionsBulk();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+
+  useEffect(() => {
+    if (!transactions) {
+      setSelectedIds(new Set());
+      return;
+    }
+
+    const validIds = new Set(transactions.map((transaction) => transaction.id));
+    setSelectedIds((current) => {
+      const next = new Set(
+        [...current].filter((transactionId) => validIds.has(transactionId))
+      );
+
+      return next.size === current.size ? current : next;
+    });
+  }, [transactions]);
 
   // Toggle selection
   const toggleSelection = (id: string) => {
@@ -106,6 +127,10 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
     );
   }
 
+  const previewCount = transactions?.length ?? 0;
+  const isTrimmedPreview =
+    typeof totalCount === 'number' && totalCount > previewCount;
+
   return (
     <Card className="border-0 shadow-lg overflow-hidden">
       <CardHeader className="pb-4">
@@ -113,8 +138,13 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <CardTitle className="text-lg font-semibold">Transaksi Terbaru</CardTitle>
             <Badge variant="secondary" className="font-normal">
-              {transactions?.length ?? 0} transaksi
+              {isTrimmedPreview ? `${previewCount} terbaru` : `${previewCount} transaksi`}
             </Badge>
+            {isTrimmedPreview ? (
+              <Badge variant="outline" className="font-normal">
+                {totalCount} transaksi bulan ini
+              </Badge>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {/* Select All Button */}
@@ -298,7 +328,7 @@ export function TransactionList({ month, year, onEdit }: TransactionListProps) {
                   Tambahkan transaksi pertama Anda untuk mulai melihat riwayat terbaru, catatan, dan ringkasan arus uang.
                 </p>
                 <div className="mt-5">
-                  <AddTransactionDialog
+                  <DeferredAddTransactionDialog
                     trigger={
                       <Button className="h-11 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-[1.02] hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/30">
                         <Sparkles className="mr-2 h-4 w-4" />

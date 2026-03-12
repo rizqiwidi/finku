@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { useBudgets } from '@/hooks/use-api';
+import type { BudgetProgress as BudgetProgressItem } from '@/types';
 import { getCategoryIconComponent } from '@/lib/category-icons';
 import { formatCurrency, cn } from '@/lib/utils';
 import { BudgetAllocationDialog } from './budget-allocation-dialog';
@@ -20,11 +20,16 @@ import { BudgetAllocationDialog } from './budget-allocation-dialog';
 interface BudgetProgressProps {
   month: number;
   year: number;
+  budgets?: BudgetProgressItem[];
+  isLoading?: boolean;
 }
 
-export function BudgetProgress({ month, year }: BudgetProgressProps) {
-  const { data: budgets, isLoading } = useBudgets(month, year);
-
+export function BudgetProgress({
+  month,
+  year,
+  budgets,
+  isLoading = false,
+}: BudgetProgressProps) {
   // Filter out budgets with 0 allocation and sort by amount (largest first)
   const activeBudgets = budgets?.filter(b => b.amount > 0)
     .sort((a, b) => b.amount - a.amount) ?? [];

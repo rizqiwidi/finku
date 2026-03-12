@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { invalidateFinanceQueries } from '@/hooks/use-api';
+import { refreshTransactionQueries } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 
 interface ParsedTransaction {
@@ -173,12 +173,35 @@ function normalizeTextValue(value: ParsedCell) {
   return String(value ?? '').trim();
 }
 
-export function ExcelUpload() {
-  const [open, setOpen] = React.useState(false);
+async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
+  const payload = (await response.json().catch(() => null)) as { error?: string } | T | null;
+
+  if (!response.ok) {
+    throw new Error(
+      (payload && typeof payload === 'object' && 'error' in payload && payload.error) ||
+        fallbackMessage
+    );
+  }
+
+  return payload as T;
+}
+
+export interface ExcelUploadProps {
+  openOnMount?: boolean;
+}
+
+interface BulkImportResponse {
+  createdCategoryCount: number;
+  importedCount: number;
+}
+
+export function ExcelUpload({ openOnMount = false }: ExcelUploadProps) {
+  const [open, setOpen] = React.useState(Boolean(openOnMount));
   const [file, setFile] = React.useState<File | null>(null);
   const [parsedData, setParsedData] = React.useState<ParsedTransaction[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const [importing, setImporting] = React.useState(false);
+  const [importStatusMessage, setImportStatusMessage] = React.useState('Mengimpor data...');
   const [progress, setProgress] = React.useState(0);
   const [errors, setErrors] = React.useState<string[]>([]);
   const [dragActive, setDragActive] = React.useState(false);
@@ -332,91 +355,70 @@ export function ExcelUpload() {
     if (parsedData.length === 0) return;
 
     setImporting(true);
-    setProgress(0);
+    setImportStatusMessage('Menyiapkan batch import...');
+    setProgress(12);
 
-    let successCount = 0;
-    let failCount = 0;
+    let progressTimer: number | null = window.setInterval(() => {
+      setProgress((current) => Math.min(current + 7, 88));
+    }, 180);
 
-    for (let i = 0; i < parsedData.length; i++) {
-      const transaction = parsedData[i];
-      
-      try {
-        // First, find or create category
-        const categoryResponse = await fetch('/api/categories?type=' + transaction.type);
-        const categories = await categoryResponse.json();
-        
-        let categoryId = categories.find((c: { name: string }) => 
-          c.name.toLowerCase() === transaction.category.toLowerCase()
-        )?.id;
-
-        if (!categoryId && categories.length > 0) {
-          categoryId = categories[0].id;
-        }
-
-        if (!categoryId) {
-          // Create category
-          const createCatResponse = await fetch('/api/categories', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: transaction.category,
-              type: transaction.type,
-              icon: transaction.type === 'income' ? 'TrendingUp' : 'TrendingDown',
-              color: transaction.type === 'income' ? '#10b981' : '#ef4444',
-            }),
-          });
-          const newCategory = await createCatResponse.json();
-          categoryId = newCategory.id;
-        }
-
-        // Create transaction
-        const response = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+    try {
+      const response = await fetch('/api/transactions/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactions: parsedData.map((transaction) => ({
             amount: transaction.amount,
+            category: transaction.category,
+            date: transaction.date.toISOString(),
             description: transaction.description,
             type: transaction.type,
-            date: transaction.date.toISOString(),
-            categoryId,
-          }),
-        });
+          })),
+        }),
+      });
 
-        if (response.ok) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      } catch {
-        failCount++;
+      setImportStatusMessage('Menyimpan kategori dan transaksi...');
+      const result = await readJsonOrThrow<BulkImportResponse>(
+        response,
+        'Gagal mengimpor transaksi.'
+      );
+
+      if (progressTimer !== null) {
+        window.clearInterval(progressTimer);
+        progressTimer = null;
       }
 
-      setProgress(Math.round(((i + 1) / parsedData.length) * 100));
-    }
-
-    setImporting(false);
-
-    if (successCount > 0) {
+      setProgress(100);
+      setImportStatusMessage('Import selesai.');
       toast({
         title: 'Import Berhasil',
-        description: `${successCount} transaksi berhasil diimpor`,
+        description:
+          result.createdCategoryCount > 0
+            ? `${result.importedCount} transaksi berhasil diimpor dan ${result.createdCategoryCount} kategori baru dibuat.`
+            : `${result.importedCount} transaksi berhasil diimpor.`,
       });
-    }
 
-    if (failCount > 0) {
-      toast({
-        title: 'Peringatan',
-        description: `${failCount} transaksi gagal diimpor`,
-        variant: 'destructive',
-      });
-    }
-
-    if (successCount > 0) {
       setOpen(false);
       setFile(null);
       setParsedData([]);
       setProgress(0);
-      await invalidateFinanceQueries(queryClient);
+      setImportStatusMessage('Mengimpor data...');
+      await refreshTransactionQueries(queryClient, { includeCategories: true });
+    } catch (error) {
+      if (progressTimer !== null) {
+        window.clearInterval(progressTimer);
+      }
+
+      setProgress(0);
+      setImportStatusMessage('Mengimpor data...');
+      toast({
+        title: 'Gagal import',
+        description:
+          error instanceof Error ? error.message : 'Gagal mengimpor transaksi.',
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -425,6 +427,7 @@ export function ExcelUpload() {
     setParsedData([]);
     setErrors([]);
     setProgress(0);
+    setImportStatusMessage('Mengimpor data...');
   };
 
   return (
@@ -625,7 +628,7 @@ export function ExcelUpload() {
                   className="space-y-2"
                 >
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Mengimpor data...</span>
+                    <span className="text-muted-foreground">{importStatusMessage}</span>
                     <span className="text-violet-500 font-medium">{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-violet-500 [&>div]:to-purple-500" />

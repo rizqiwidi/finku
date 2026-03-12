@@ -18,6 +18,12 @@ const authUserSelect = {
 
 export type AuthUser = Prisma.UserGetPayload<{ select: typeof authUserSelect }>;
 
+export interface AuthClaims {
+  userId: string;
+  username: string | null;
+  role: string | null;
+}
+
 export class AuthError extends Error {
   status: number;
 
@@ -44,24 +50,22 @@ export async function createAuthToken(user: Pick<AuthUser, 'id' | 'username' | '
     .sign(getJwtSecret());
 }
 
-export async function requireAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
-
-  if (!token) {
-    throw new AuthError('Unauthorized', 401);
-  }
-
+export async function verifyAuthTokenValue(token: string): Promise<AuthClaims> {
   const secret = getJwtSecret();
-  let userId = '';
 
   try {
     const { payload } = await jwtVerify(token, secret);
-    userId = payload.userId as string;
+    const userId = payload.userId;
 
     if (typeof userId !== 'string' || userId.length === 0) {
       throw new AuthError('Unauthorized', 401);
     }
+
+    return {
+      userId,
+      username: typeof payload.username === 'string' ? payload.username : null,
+      role: typeof payload.role === 'string' ? payload.role : null,
+    };
   } catch (error) {
     if (isAuthError(error)) {
       throw error;
@@ -69,6 +73,21 @@ export async function requireAuthUser() {
 
     throw new AuthError('Unauthorized', 401);
   }
+}
+
+export async function requireAuthClaims() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+
+  if (!token) {
+    throw new AuthError('Unauthorized', 401);
+  }
+
+  return verifyAuthTokenValue(token);
+}
+
+export async function requireAuthUser() {
+  const { userId } = await requireAuthClaims();
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

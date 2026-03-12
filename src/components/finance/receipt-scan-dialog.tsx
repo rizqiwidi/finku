@@ -453,8 +453,14 @@ async function prepareReceiptFile(file: File) {
   }
 }
 
-export function ReceiptScanDialog() {
-  const [open, setOpen] = useState(false);
+export interface ReceiptScanDialogProps {
+  openOnMount?: boolean;
+}
+
+export function ReceiptScanDialog({
+  openOnMount = false,
+}: ReceiptScanDialogProps) {
+  const [open, setOpen] = useState(Boolean(openOnMount));
   const [preparedFiles, setPreparedFiles] = useState<PreparedReceiptFile[]>([]);
   const [prepareLoading, setPrepareLoading] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);

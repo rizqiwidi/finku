@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { CalendarDays } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -56,17 +55,15 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
           )}
           {...props}
         />
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           disabled={disabled}
           onClick={openPicker}
-          className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+          className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-muted-foreground transition-colors duration-200 hover:bg-muted/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
         >
           <CalendarDays className="h-5 w-5" />
           <span className="sr-only">Buka pemilih tanggal</span>
-        </Button>
+        </button>
       </div>
     );
   }

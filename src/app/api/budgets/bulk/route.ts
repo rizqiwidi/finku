@@ -1,77 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
+import {
+  FinanceBulkValidationError,
+  normalizeBulkAllocationSavePayload,
+} from '@/lib/finance-bulk';
 
-// Bulk create/update budgets for a month
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const body = await request.json();
-    const { month, year, allocations } = body;
-    const normalizedMonth = Number(month);
-    const normalizedYear = Number(year);
+    const payload = normalizeBulkAllocationSavePayload(body);
 
-    // Validate input
-    if (
-      !normalizedMonth ||
-      !normalizedYear ||
-      !allocations ||
-      !Array.isArray(allocations)
-    ) {
-      return NextResponse.json(
-        { error: 'Invalid input' },
-        { status: 400 }
-      );
-    }
-
-    const categoryIds = [...new Set(allocations.map((allocation: { categoryId: string }) => allocation.categoryId))];
-    const ownedCategories = await prisma.category.findMany({
-      where: {
-        userId: user.id,
-        id: { in: categoryIds },
-      },
-      select: { id: true },
-    });
-
-    if (ownedCategories.length !== categoryIds.length) {
-      return NextResponse.json(
-        { error: 'One or more categories are invalid' },
-        { status: 400 }
-      );
-    }
-
-    const results = await Promise.all(
-      allocations.map(async (allocation: { categoryId: string; amount: number }) => {
-        return prisma.budget.upsert({
-          where: {
-            userId_categoryId_month_year: {
-              userId: user.id,
-              categoryId: allocation.categoryId,
-              month: normalizedMonth,
-              year: normalizedYear,
+    const result = await prisma.$transaction(async (tx) => {
+      const categoryIds = payload.allocations.map((allocation) => allocation.categoryId);
+      const ownedCategories = categoryIds.length
+        ? await tx.category.findMany({
+            where: {
+              userId: auth.userId,
+              id: { in: categoryIds },
             },
-          },
-          update: {
-            amount: Number(allocation.amount),
-            period: 'monthly',
-          },
-          create: {
-            userId: user.id,
-            categoryId: allocation.categoryId,
-            amount: Number(allocation.amount),
-            period: 'monthly',
-            month: normalizedMonth,
-            year: normalizedYear,
+            select: {
+              id: true,
+              type: true,
+            },
+          })
+        : [];
+
+      if (ownedCategories.length !== categoryIds.length) {
+        throw new FinanceBulkValidationError('Satu atau lebih kategori tidak valid.');
+      }
+
+      const categoryById = new Map(
+        ownedCategories.map((category) => [category.id, category])
+      );
+
+      await tx.userSettings.upsert({
+        where: { userId: auth.userId },
+        update: {
+          monthlyIncome: payload.monthlyIncome,
+        },
+        create: {
+          userId: auth.userId,
+          monthlyIncome: payload.monthlyIncome,
+          savingsPercentage: 20,
+        },
+      });
+
+      await Promise.all(
+        payload.allocations.map((allocation) => {
+          const category = categoryById.get(allocation.categoryId);
+
+          if (!category) {
+            throw new FinanceBulkValidationError(
+              'Satu atau lebih kategori tidak valid.'
+            );
+          }
+
+          return tx.category.update({
+            where: {
+              id: allocation.categoryId,
+            },
+            data: {
+              allocationPercentage: allocation.allocationPercentage,
+              budget: category.type === 'expense' ? allocation.amount : null,
+            },
+          });
+        })
+      );
+
+      if (categoryIds.length > 0) {
+        await tx.budget.deleteMany({
+          where: {
+            userId: auth.userId,
+            month: payload.month,
+            year: payload.year,
+            categoryId: { in: categoryIds },
           },
         });
-      })
-    );
 
-    return NextResponse.json({ 
-      message: `Updated ${results.length} budgets`,
-      count: results.length 
+        await tx.budget.createMany({
+          data: payload.allocations.map((allocation) => ({
+            userId: auth.userId,
+            categoryId: allocation.categoryId,
+            amount: allocation.amount,
+            period: 'monthly',
+            month: payload.month,
+            year: payload.year,
+          })),
+        });
+      }
+
+      return {
+        count: payload.allocations.length,
+      };
+    });
+
+    return NextResponse.json({
+      message: `Updated ${result.count} budgets`,
+      count: result.count,
     });
   } catch (error) {
+    if (error instanceof FinanceBulkValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     if (isAuthError(error)) {
       return NextResponse.json(
         { error: error.message },

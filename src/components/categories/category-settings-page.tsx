@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCategories, invalidateFinanceQueries } from '@/hooks/use-api';
+import { useCategories, refreshCategoryQueries } from '@/hooks/use-api';
 import { CATEGORY_ICON_OPTIONS, getCategoryIconComponent } from '@/lib/category-icons';
 import { CATEGORY_PRESET_LIBRARY } from '@/lib/category-presets';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -124,7 +124,7 @@ export function CategorySettingsPage() {
   };
 
   const syncQueries = async () => {
-    await invalidateFinanceQueries(queryClient);
+    await refreshCategoryQueries(queryClient);
   };
 
   const handleSave = async () => {

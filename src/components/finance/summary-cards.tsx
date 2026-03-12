@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useSummary } from '@/hooks/use-api';
+import type { SummaryResponse } from '@/types';
 import { cn, formatCurrency } from '@/lib/utils';
 
 const container = {
@@ -24,11 +24,16 @@ const item = {
 interface SummaryCardsProps {
   month: number;
   year: number;
+  summary?: SummaryResponse;
+  isLoading?: boolean;
 }
 
-export function SummaryCards({ month, year }: SummaryCardsProps) {
-  const { data: summary, isLoading } = useSummary(month, year);
-
+export function SummaryCards({
+  month,
+  year,
+  summary,
+  isLoading = false,
+}: SummaryCardsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">

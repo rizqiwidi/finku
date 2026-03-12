@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { useMonthlyChartData, useCategorySpending } from '@/hooks/use-api';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import type { CategorySpending, TrendDataPoint } from '@/types';
 import { cn, formatCurrency } from '@/lib/utils';
 
 // Custom tooltip for pie chart
@@ -142,9 +143,34 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
-export function MonthlyChart({ month, year }: { month: number; year: number }) {
+interface MonthlyChartProps {
+  month: number;
+  year: number;
+  previewData?: TrendDataPoint[];
+  previewLoading?: boolean;
+}
+
+export function MonthlyChart({
+  month,
+  year,
+  previewData,
+  previewLoading = false,
+}: MonthlyChartProps) {
   const [trendMode, setTrendMode] = useState<'hour' | 'day' | 'month'>('month');
-  const { data, isLoading } = useMonthlyChartData(month, year, trendMode);
+  const showPreviewData = trendMode === 'month' && previewData !== undefined;
+  const shouldFetchChart =
+    trendMode !== 'month' || (!showPreviewData && !previewLoading);
+  const {
+    data: chartData,
+    isLoading: isChartLoading,
+  } = useMonthlyChartData(month, year, trendMode, {
+    enabled: shouldFetchChart,
+  });
+  const data = showPreviewData ? previewData ?? [] : chartData ?? [];
+  const isLoading =
+    trendMode === 'month'
+      ? previewLoading || (!showPreviewData && isChartLoading)
+      : isChartLoading;
   const totalIncome = (data ?? []).reduce((sum, item) => sum + item.income, 0);
   const totalExpenses = (data ?? []).reduce((sum, item) => sum + item.expenses, 0);
   const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
@@ -287,11 +313,36 @@ export function MonthlyChart({ month, year }: { month: number; year: number }) {
   );
 }
 
-export function CategoryChart({ month, year }: { month: number; year: number }) {
+interface CategoryChartProps {
+  month: number;
+  year: number;
+  previewData?: CategorySpending[];
+  previewLoading?: boolean;
+}
+
+export function CategoryChart({
+  month,
+  year,
+  previewData,
+  previewLoading = false,
+}: CategoryChartProps) {
   const [activeType, setActiveType] = useState<'income' | 'expense'>('expense');
   const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
   const activeLabel = activeType === 'income' ? 'Pemasukan' : 'Pengeluaran';
-  const { data, isLoading } = useCategorySpending(month, year, activeType);
+  const showPreviewData = activeType === 'expense' && previewData !== undefined;
+  const shouldFetchCategory =
+    activeType !== 'expense' || (!showPreviewData && !previewLoading);
+  const {
+    data: categoryData,
+    isLoading: isCategoryLoading,
+  } = useCategorySpending(month, year, activeType, {
+    enabled: shouldFetchCategory,
+  });
+  const data = showPreviewData ? previewData ?? [] : categoryData ?? [];
+  const isLoading =
+    activeType === 'expense'
+      ? previewLoading || (!showPreviewData && isCategoryLoading)
+      : isCategoryLoading;
   const selectedLabel = new Date(year, month - 1, 1).toLocaleDateString('id-ID', {
     month: 'long',
     year: 'numeric',

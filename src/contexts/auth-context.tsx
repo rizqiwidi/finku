@@ -136,22 +136,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const markSessionActive = useCallback(
-    (forceRefresh = false) => {
+    (forcePersist = false) => {
       if (!user) {
         return;
       }
 
       const now = Date.now();
-      if (forceRefresh || now - lastActivityRef.current >= SESSION_ACTIVITY_THROTTLE_MS) {
+      if (forcePersist || now - lastActivityRef.current >= SESSION_ACTIVITY_THROTTLE_MS) {
         lastActivityRef.current = now;
         persistTimestamp(SESSION_LAST_ACTIVITY_KEY, now);
       }
-
-      if (forceRefresh || now - lastRefreshRef.current >= SESSION_REFRESH_INTERVAL_MS) {
-        void refreshSession(forceRefresh);
-      }
     },
-    [refreshSession, user]
+    [user]
   );
 
   const checkAuth = useCallback(async () => {
@@ -233,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         markSessionActive(true);
+        void refreshSession(false);
       }
     };
 
@@ -240,11 +237,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const lastActivity = getStoredTimestamp(SESSION_LAST_ACTIVITY_KEY);
       if (lastActivity && Date.now() - lastActivity > SESSION_IDLE_TIMEOUT_MS) {
         void logout();
-        return;
-      }
-
-      if (document.visibilityState === 'visible') {
-        markSessionActive(false);
       }
     }, 60 * 1000);
 
@@ -266,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', handleActivity);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [logout, markSessionActive, user]);
+  }, [logout, markSessionActive, refreshSession, user]);
 
   return (
     <AuthContext.Provider

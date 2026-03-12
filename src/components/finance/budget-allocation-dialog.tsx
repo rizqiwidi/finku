@@ -20,6 +20,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  refreshAllocationQueries,
+  useCategories,
+  useSettings,
+} from '@/hooks/use-api';
 import { getCategoryIconComponent } from '@/lib/category-icons';
 import { useToast } from '@/hooks/use-toast';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -103,10 +108,17 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
   const [expenseInputs, setExpenseInputs] = useState<Record<string, string>>({});
   const [savingsInputs, setSavingsInputs] = useState<Record<string, string>>({});
   const [monthlyIncome, setMonthlyIncome] = useState<string>('0');
-  const [isLoading, setIsLoading] = useState(true);
+  const [hydratedScope, setHydratedScope] = useState<string | null>(null);
+  const [hasReportedLoadError, setHasReportedLoadError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const categoriesQuery = useCategories({ enabled: open });
+  const settingsQuery = useSettings({ enabled: open });
+  const currentScope = `${month}-${year}`;
+  const needsHydration = hydratedScope !== currentScope;
+  const isLoading =
+    needsHydration || categoriesQuery.isLoading || settingsQuery.isLoading;
 
   const monthName = new Date(year, month - 1).toLocaleDateString('id-ID', {
     month: 'long',
@@ -114,10 +126,11 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
   });
 
   useEffect(() => {
-    if (open) {
-      void fetchData();
+    if (!open) {
+      setHydratedScope(null);
+      setHasReportedLoadError(false);
     }
-  }, [month, open, year]);
+  }, [open]);
 
   const applyCategoryCollection = (items: Category[], isSavings: boolean) => {
     const nextItems = items.map((item) => ({
@@ -135,56 +148,84 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
     setExpenseInputs(buildInputMap(nextItems));
   };
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [expenseRes, savingsRes, settingsRes] = await Promise.all([
-        fetch('/api/categories?type=expense', { cache: 'no-store' }),
-        fetch('/api/categories?type=savings', { cache: 'no-store' }),
-        fetch('/api/settings', { cache: 'no-store' }),
-      ]);
-      const [expenseData, savingsData, settings] = await Promise.all([
-        readJsonOrThrow<Category[]>(expenseRes, 'Gagal memuat kategori pengeluaran.'),
-        readJsonOrThrow<Category[]>(savingsRes, 'Gagal memuat kategori tabungan.'),
-        readJsonOrThrow<{ monthlyIncome?: number | null }>(
-          settingsRes,
-          'Gagal memuat pengaturan pemasukan bulanan.'
-        ),
-      ]);
-
-      const nextCategories = sortCategoriesForAllocation(
-        expenseData.map((category) => ({
-          ...category,
-          allocationPercentage: category.allocationPercentage || 0,
-        }))
-      );
-      const nextSavings = sortCategoriesForAllocation(
-        savingsData.map((category) => ({
-          ...category,
-          allocationPercentage: category.allocationPercentage || 0,
-        }))
-      );
-
-      setCategories(nextCategories);
-      setExpenseInputs(buildInputMap(nextCategories));
-      setSavingsCategories(nextSavings);
-      setSavingsInputs(buildInputMap(nextSavings));
-      setMonthlyIncome(String(settings.monthlyIncome || 0));
-      setActiveSection(nextCategories.length > 0 ? 'expense' : 'savings');
-    } catch (error) {
-      console.error('Error fetching allocation data:', error);
-      toast({
-        title: 'Gagal memuat alokasi',
-        description:
-          error instanceof Error
-            ? error.message
-            : 'Data kategori atau pengaturan belum bisa dimuat.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (!open) {
+      return;
     }
-  };
+
+    const allCategories = categoriesQuery.data;
+    const settings = settingsQuery.data;
+    if (!allCategories || !settings) {
+      return;
+    }
+
+    if (
+      categoriesQuery.isFetching ||
+      settingsQuery.isFetching ||
+      hydratedScope === currentScope
+    ) {
+      return;
+    }
+
+    const expenseData = allCategories.filter((category) => category.type === 'expense');
+    const savingsData = allCategories.filter((category) => category.type === 'savings');
+    const nextCategories = sortCategoriesForAllocation(
+      expenseData.map((category) => ({
+        ...category,
+        allocationPercentage: category.allocationPercentage || 0,
+      }))
+    );
+    const nextSavings = sortCategoriesForAllocation(
+      savingsData.map((category) => ({
+        ...category,
+        allocationPercentage: category.allocationPercentage || 0,
+      }))
+    );
+
+    setCategories(nextCategories);
+    setExpenseInputs(buildInputMap(nextCategories));
+    setSavingsCategories(nextSavings);
+    setSavingsInputs(buildInputMap(nextSavings));
+    setMonthlyIncome(String(settings.monthlyIncome || 0));
+    setActiveSection(nextCategories.length > 0 ? 'expense' : 'savings');
+    setHydratedScope(currentScope);
+  }, [
+    categoriesQuery.data,
+    categoriesQuery.isFetching,
+    currentScope,
+    hydratedScope,
+    open,
+    settingsQuery.data,
+    settingsQuery.isFetching,
+  ]);
+
+  useEffect(() => {
+    if (!open || hasReportedLoadError) {
+      return;
+    }
+
+    const loadError = categoriesQuery.error ?? settingsQuery.error;
+    if (!loadError) {
+      return;
+    }
+
+    console.error('Error fetching allocation data:', loadError);
+    toast({
+      title: 'Gagal memuat alokasi',
+      description:
+        loadError instanceof Error
+          ? loadError.message
+          : 'Data kategori atau pengaturan belum bisa dimuat.',
+      variant: 'destructive',
+    });
+    setHasReportedLoadError(true);
+  }, [
+    categoriesQuery.error,
+    hasReportedLoadError,
+    open,
+    settingsQuery.error,
+    toast,
+  ]);
 
   const incomeValue = Number.parseFloat(monthlyIncome.replace(/[^\d.-]/g, '')) || 0;
   const totalExpensePercentage = sumAllocations(categories);
@@ -195,6 +236,8 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
   const isOverAllocated = normalizedTotalAllocated > 100;
   const isFullyAllocated = normalizedTotalAllocated === 100;
   const activeSectionItems = activeSection === 'savings' ? savingsCategories : categories;
+  const allocatedAmountValue = Math.round((incomeValue * normalizedTotalAllocated) / 100);
+  const remainingAmountValue = Math.round((incomeValue * remainingPercentage) / 100);
   const configuredCategoriesCount =
     categories.filter((category) => category.allocationPercentage > 0).length +
     savingsCategories.filter((category) => category.allocationPercentage > 0).length;
@@ -363,72 +406,40 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
     setIsSaving(true);
     try {
       const allCategories = [...categories, ...savingsCategories];
-      const settingsRequest = fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ monthlyIncome: incomeValue }),
-      });
-
-      const categoryRequests = Promise.all(
-        allCategories.map((category) =>
-          fetch(`/api/categories/${category.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              allocationPercentage: category.allocationPercentage,
-              budget:
-                category.allocationPercentage > 0
-                  ? Math.round((incomeValue * category.allocationPercentage) / 100)
-                  : 0,
-            }),
-          })
-        )
-      );
-
       const budgetRequest = fetch('/api/budgets/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           month,
           year,
+          monthlyIncome: incomeValue,
           allocations: allCategories.map((category) => ({
+            allocationPercentage: category.allocationPercentage,
             categoryId: category.id,
-            amount: Math.round((incomeValue * category.allocationPercentage) / 100),
           })),
         }),
       });
 
-      const [settingsResponse, categoryResponses, budgetResponse] = await Promise.all([
-        settingsRequest,
-        categoryRequests,
-        budgetRequest,
-      ]);
-
-      await readJsonOrThrow(settingsResponse, 'Gagal menyimpan pemasukan bulanan.');
-      await Promise.all(
-        categoryResponses.map((response) =>
-          readJsonOrThrow(response, 'Gagal menyimpan alokasi kategori.')
-        )
+      await readJsonOrThrow(
+        await budgetRequest,
+        'Gagal menyimpan alokasi anggaran bulanan.'
       );
-      await readJsonOrThrow(budgetResponse, 'Gagal menyimpan nominal anggaran bulanan.');
 
       toast({
         title: 'Alokasi tersimpan',
         description: 'Perubahan alokasi anggaran berhasil disimpan.',
       });
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['budgets'] }),
-        queryClient.invalidateQueries({ queryKey: ['summary'] }),
-        queryClient.invalidateQueries({ queryKey: ['settings'] }),
-        queryClient.invalidateQueries({ queryKey: ['categories'] }),
-      ]);
+      await refreshAllocationQueries(queryClient);
       setOpen(false);
     } catch (error) {
       console.error('Error saving allocation:', error);
       toast({
         title: 'Gagal menyimpan alokasi',
-        description: 'Coba lagi setelah memeriksa nominal dan persentase.',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Coba lagi setelah memeriksa nominal dan persentase.',
         variant: 'destructive',
       });
     } finally {
@@ -467,39 +478,21 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <BadgePill
-            tone={isSavings ? 'amber' : 'rose'}
-            label={`${sumAllocations(items).toFixed(2).replace('.', ',')}%`}
-          />
-          <BadgePill
             tone="emerald"
             label={`${items.filter((item) => item.allocationPercentage > 0).length}/${items.length} aktif`}
           />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-xl px-2.5 text-muted-foreground"
+            onClick={() => resetAllocations(isSavings ? 'savings' : 'expense')}
+            disabled={items.length === 0}
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            Reset tab ini
+          </Button>
         </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 rounded-xl"
-          onClick={() => distributeRemainingToSection(isSavings)}
-          disabled={items.length === 0 || remainingPercentage <= 0}
-        >
-          <Sparkles className="mr-2 h-4 w-4" />
-          Ratakan sisa
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-9 rounded-xl text-muted-foreground"
-          onClick={() => resetAllocations(isSavings ? 'savings' : 'expense')}
-          disabled={items.length === 0}
-        >
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Reset bagian ini
-        </Button>
       </div>
 
       <div className="space-y-3">
@@ -597,8 +590,8 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-5 xl:grid-cols-[300px,minmax(0,1fr)]">
-            <div className="space-y-3 xl:sticky xl:top-0">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 xl:grid xl:grid-cols-[300px,minmax(0,1fr)] xl:overflow-hidden">
+            <div className="space-y-3 xl:sticky xl:top-0 xl:max-h-full">
               <div className="rounded-3xl border border-border bg-muted/40 p-4">
                 <div className="mb-3 flex items-center gap-2 text-foreground">
                   <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -650,57 +643,30 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                   />
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <div className="rounded-2xl bg-muted/60 px-3 py-2">
+                  <motion.div
+                    whileHover={{ y: -1 }}
+                    className="rounded-2xl bg-muted/60 px-3 py-2"
+                  >
                     <p>Terpakai</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
-                      {formatCurrency(Math.round((incomeValue * normalizedTotalAllocated) / 100))}
+                      {formatCurrency(allocatedAmountValue)}
                     </p>
-                  </div>
-                  <div className="rounded-2xl bg-muted/60 px-3 py-2">
+                  </motion.div>
+                  <motion.div
+                    whileHover={{ y: -1 }}
+                    className="rounded-2xl bg-muted/60 px-3 py-2"
+                  >
                     <p>Sisa</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
-                      {formatCurrency(Math.round((incomeValue * remainingPercentage) / 100))}
+                      {formatCurrency(remainingAmountValue)}
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    Terpakai
-                  </p>
-                  <p className="mt-2 text-lg font-bold text-foreground">
-                    {formatCurrency(Math.round((incomeValue * normalizedTotalAllocated) / 100))}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {normalizedTotalAllocated.toFixed(2).replace('.', ',')}% dari pemasukan
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sisa</p>
-                  <p className="mt-2 text-lg font-bold text-foreground">
-                    {formatCurrency(Math.round((incomeValue * remainingPercentage) / 100))}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {remainingPercentage.toFixed(2).replace('.', ',')}% siap dialokasikan
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    Kategori Aktif
-                  </p>
-                  <p className="mt-2 text-lg font-bold text-foreground">{configuredCategoriesCount}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    dari {categories.length + savingsCategories.length} kategori
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-border bg-card/92 p-4 shadow-sm">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-foreground">Ringkasan</span>
+                <div className="mt-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">
+                      {configuredCategoriesCount} kategori aktif
+                    </span>
                     <BadgePill
                       tone={
                         isOverAllocated ? 'rose' : isFullyAllocated ? 'emerald' : 'amber'
@@ -714,9 +680,9 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                       }
                     />
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                     Pengeluaran {totalExpensePercentage.toFixed(2).replace('.', ',')}% dan tabungan{' '}
-                    {totalSavingsPercentage.toFixed(2).replace('.', ',')}% untuk {monthName}.
+                    {totalSavingsPercentage.toFixed(2).replace('.', ',')}%.
                   </p>
                 </div>
               </div>
@@ -764,16 +730,16 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
               </Button>
             </div>
 
-            <div className="min-h-0 overflow-hidden">
+            <div className="min-h-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
               <Tabs
                 value={activeSection}
                 onValueChange={(value) => setActiveSection(value as 'expense' | 'savings')}
-                className="flex h-full min-h-0 flex-col gap-4"
+                className="flex min-h-0 flex-col gap-4 xl:h-full"
               >
                 <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-muted/80 p-1.5">
                   <TabsTrigger
                     value="expense"
-                    className="rounded-xl data-[state=active]:border-rose-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                    className="rounded-xl hover:translate-y-0 data-[state=active]:border-rose-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
                   >
                     <span className="truncate">Pengeluaran</span>
                     <span className="ml-2 text-xs opacity-80">
@@ -782,7 +748,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                   </TabsTrigger>
                   <TabsTrigger
                     value="savings"
-                    className="rounded-xl data-[state=active]:border-amber-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
+                    className="rounded-xl hover:translate-y-0 data-[state=active]:border-amber-500/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white dark:data-[state=active]:text-white"
                   >
                     <span className="truncate">Tabungan</span>
                     <span className="ml-2 text-xs opacity-80">
@@ -791,7 +757,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="expense" className="mt-0 min-h-0 flex-1 overflow-y-auto pr-1">
+                <TabsContent value="expense" className="mt-0 min-h-0 flex-1 overflow-visible xl:overflow-y-auto xl:pr-1">
                   {renderAllocationSection(
                     'Kategori Pengeluaran',
                     'Pilih pos belanja yang paling penting, lalu geser atau isi persen secara cepat.',
@@ -800,7 +766,7 @@ export function BudgetAllocationDialog({ month, year, trigger }: BudgetAllocatio
                     false
                   )}
                 </TabsContent>
-                <TabsContent value="savings" className="mt-0 min-h-0 flex-1 overflow-y-auto pr-1">
+                <TabsContent value="savings" className="mt-0 min-h-0 flex-1 overflow-visible xl:overflow-y-auto xl:pr-1">
                   {renderAllocationSection(
                     'Kategori Tabungan',
                     'Sisihkan tabungan, investasi, atau dana tujuan tanpa membuat layar terlalu padat.',

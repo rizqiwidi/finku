@@ -52,12 +52,6 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 type InputMode = 'manual' | 'ai';
 
-interface AddTransactionDialogProps {
-  editTransaction?: Transaction | null;
-  onClose?: () => void;
-  trigger?: ReactNode;
-}
-
 interface LocalAssistantDraft extends SuggestedTransactionDraft {
   categoryId?: string | null;
 }
@@ -197,12 +191,20 @@ function prepareTransactionPayload(draft: LocalAssistantDraft, categories: Categ
   };
 }
 
+export interface AddTransactionDialogProps {
+  editTransaction?: Transaction | null;
+  onClose?: () => void;
+  trigger?: ReactNode;
+  openOnMount?: boolean;
+}
+
 export function AddTransactionDialog({
   editTransaction,
   onClose,
   trigger,
+  openOnMount = false,
 }: AddTransactionDialogProps) {
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(Boolean(openOnMount));
   const [inputMode, setInputMode] = useState<InputMode>('manual');
   const [assistantPrompt, setAssistantPrompt] = useState('');
   const [assistantSummary, setAssistantSummary] = useState<string | null>(null);

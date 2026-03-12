@@ -2,13 +2,13 @@ import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isPasswordHash } from '@/lib/user-service';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 
 const VALID_RESET_TARGETS = new Set(['transactions', 'allocations']);
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const body = await request.json();
     const password =
       typeof body.password === 'string' ? body.password : '';
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: auth.userId },
       select: { id: true, password: true },
     });
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     if (target === 'transactions') {
       const deletedTransactions = await prisma.transaction.deleteMany({
-        where: { userId: user.id },
+        where: { userId: auth.userId },
       });
 
       return NextResponse.json({
@@ -63,10 +63,10 @@ export async function POST(request: NextRequest) {
 
     const [deletedBudgets, resetCategories] = await prisma.$transaction([
       prisma.budget.deleteMany({
-        where: { userId: user.id },
+        where: { userId: auth.userId },
       }),
       prisma.category.updateMany({
-        where: { userId: user.id },
+        where: { userId: auth.userId },
         data: {
           budget: null,
           allocationPercentage: 0,

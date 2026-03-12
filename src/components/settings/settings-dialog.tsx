@@ -16,7 +16,10 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth-context';
-import { invalidateFinanceQueries } from '@/hooks/use-api';
+import {
+  refreshAllocationQueries,
+  refreshTransactionQueries,
+} from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 
 export function SettingsDialog() {
@@ -103,7 +106,11 @@ export function SettingsDialog() {
         throw new Error(data.error || 'Gagal menghapus data');
       }
 
-      await invalidateFinanceQueries(queryClient);
+      if (target === 'transactions') {
+        await refreshTransactionQueries(queryClient);
+      } else {
+        await refreshAllocationQueries(queryClient);
+      }
       setVerificationPassword('');
 
       toast({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isCategoryIconName } from '@/lib/category-icons';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 import { getCurrentJakartaMonthYear } from '@/lib/date-input';
 
 const VALID_CATEGORY_TYPES = new Set(['income', 'expense', 'savings']);
@@ -20,13 +20,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { id } = await params;
     
     const category = await prisma.category.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: auth.userId,
       },
       include: {
         _count: {
@@ -64,7 +64,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { id } = await params;
     const body = await request.json();
     const { name, icon, color, type, budget, allocationPercentage } = body;
@@ -81,7 +81,7 @@ export async function PATCH(
     const existingCategory = await prisma.category.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: auth.userId,
       },
       select: {
         id: true,
@@ -186,7 +186,7 @@ export async function PATCH(
       await prisma.budget.upsert({
         where: {
           userId_categoryId_month_year: {
-            userId: user.id,
+            userId: auth.userId,
             categoryId: category.id,
             month,
             year,
@@ -197,7 +197,7 @@ export async function PATCH(
           period: 'monthly',
         },
         create: {
-          userId: user.id,
+          userId: auth.userId,
           categoryId: category.id,
           amount: nextBudget,
           period: 'monthly',
@@ -208,7 +208,7 @@ export async function PATCH(
     } else {
       await prisma.budget.deleteMany({
         where: {
-          userId: user.id,
+          userId: auth.userId,
           categoryId: category.id,
           month,
           year,
@@ -238,13 +238,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { id } = await params;
 
     const existingCategory = await prisma.category.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: auth.userId,
       },
       select: { id: true },
     });
@@ -260,7 +260,7 @@ export async function DELETE(
     const transactionsCount = await prisma.transaction.count({
       where: {
         categoryId: id,
-        userId: user.id,
+        userId: auth.userId,
       },
     });
 
@@ -274,7 +274,7 @@ export async function DELETE(
     await prisma.budget.deleteMany({
       where: {
         categoryId: id,
-        userId: user.id,
+        userId: auth.userId,
       },
     });
 

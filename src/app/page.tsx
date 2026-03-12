@@ -17,7 +17,6 @@ import {
 import { LoginForm } from '@/components/auth/login-form';
 import { SummaryCards } from '@/components/finance/summary-cards';
 import { TransactionList } from '@/components/finance/transaction-list';
-import { AddTransactionDialog } from '@/components/finance/add-transaction-dialog';
 import { MonthlyChart, CategoryChart } from '@/components/finance/charts';
 import { BudgetProgress } from '@/components/finance/budget-progress';
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
@@ -25,8 +24,9 @@ import { TransactionsTable } from '@/components/transactions/transactions-table'
 import { SettingsDialog } from '@/components/settings/settings-dialog';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { ExcelUpload } from '@/components/finance/excel-upload';
-import { ReceiptScanDialog } from '@/components/finance/receipt-scan-dialog';
+import { DeferredAddTransactionDialog } from '@/components/finance/deferred-add-transaction-dialog';
+import { DeferredExcelUpload } from '@/components/finance/deferred-excel-upload';
+import { DeferredReceiptScanDialog } from '@/components/finance/deferred-receipt-scan-dialog';
 import { CategorySettingsPage } from '@/components/categories/category-settings-page';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useDashboard } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import type { Transaction } from '@/types';
@@ -55,6 +56,11 @@ export default function Home() {
   
   const month = Number(selectedMonth);
   const year = Number(selectedYear);
+  const { data: dashboardData, isLoading: isDashboardLoading } = useDashboard(
+    month,
+    year,
+    { enabled: activeView === 'dashboard' }
+  );
   const monthOptions = [
     { value: '1', label: 'Januari' },
     { value: '2', label: 'Februari' },
@@ -415,7 +421,12 @@ export default function Home() {
                 </motion.div>
 
                 {/* Summary Cards */}
-                <SummaryCards month={month} year={year} />
+                <SummaryCards
+                  month={month}
+                  year={year}
+                  summary={dashboardData?.summary}
+                  isLoading={isDashboardLoading}
+                />
 
                 {/* Quick Actions */}
                 <motion.div
@@ -424,22 +435,42 @@ export default function Home() {
                   transition={{ delay: 0.1 }}
                   className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end"
                 >
-                  <ExcelUpload />
-                  <ReceiptScanDialog />
-                  <AddTransactionDialog />
+                  <DeferredExcelUpload />
+                  <DeferredReceiptScanDialog />
+                  <DeferredAddTransactionDialog />
                 </motion.div>
 
                 {/* Budget Progress */}
-                <BudgetProgress month={month} year={year} />
+                <BudgetProgress
+                  month={month}
+                  year={year}
+                  budgets={dashboardData?.budgets}
+                  isLoading={isDashboardLoading}
+                />
 
                 {/* Charts Row - Same Height */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <MonthlyChart month={month} year={year} />
-                  <CategoryChart month={month} year={year} />
+                  <MonthlyChart
+                    month={month}
+                    year={year}
+                    previewData={dashboardData?.chartPreview.monthly}
+                    previewLoading={isDashboardLoading}
+                  />
+                  <CategoryChart
+                    month={month}
+                    year={year}
+                    previewData={dashboardData?.chartPreview.categoryExpense}
+                    previewLoading={isDashboardLoading}
+                  />
                 </div>
 
                 {/* Transaction List */}
-                <TransactionList month={month} year={year} onEdit={handleEdit} />
+                <TransactionList
+                  onEdit={handleEdit}
+                  transactions={dashboardData?.transactions}
+                  totalCount={dashboardData?.transactionCount}
+                  isLoading={isDashboardLoading}
+                />
               </motion.div>
             )}
 
@@ -480,7 +511,7 @@ export default function Home() {
       </div>
 
       {editTransaction ? (
-        <AddTransactionDialog
+        <DeferredAddTransactionDialog
           editTransaction={editTransaction}
           onClose={handleCloseEdit}
         />

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isCategoryIconName } from '@/lib/category-icons';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 import { getCurrentJakartaMonthYear } from '@/lib/date-input';
 
 const VALID_CATEGORY_TYPES = new Set(['income', 'expense', 'savings']);
@@ -17,13 +17,13 @@ function parseNullableNumber(value: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
     const where = type
-      ? { userId: user.id, type }
-      : { userId: user.id };
+      ? { userId: auth.userId, type }
+      : { userId: auth.userId };
 
     const categories = await prisma.category.findMany({
       where,
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const body = await request.json();
     const { name, icon, color, type, budget, allocationPercentage } = body;
     const budgetValue = parseNullableNumber(budget);
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         type,
         budget: budgetForCategory,
         allocationPercentage: allocationForCategory,
-        userId: user.id,
+        userId: auth.userId,
       },
     });
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       await prisma.budget.upsert({
         where: {
           userId_categoryId_month_year: {
-            userId: user.id,
+            userId: auth.userId,
             categoryId: category.id,
             month: now.month,
             year: now.year,
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
           period: 'monthly',
         },
         create: {
-          userId: user.id,
+          userId: auth.userId,
           categoryId: category.id,
           amount: budgetForCategory,
           period: 'monthly',

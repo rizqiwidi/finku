@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { isAuthError, requireAuthUser } from '@/lib/auth-server';
+import { isAuthError, requireAuthClaims } from '@/lib/auth-server';
 import { getCurrentJakartaMonthYear, getJakartaMonthRange } from '@/lib/date-input';
 import { calculateFinancialSummary } from '@/lib/finance-summary';
+import { createPrivateReadResponse } from '@/lib/private-read-response';
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthUser();
+    const auth = await requireAuthClaims();
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     // Get all transactions for the month
     const transactions = await prisma.transaction.findMany({
       where: {
-        userId: user.id,
+        userId: auth.userId,
         date: {
           gte: start,
           lte: end,
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
 
     const savingsAggregate = await prisma.transaction.aggregate({
       where: {
-        userId: user.id,
+        userId: auth.userId,
         type: 'savings',
       },
       _sum: {
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
 
     const summary = calculateFinancialSummary(transactions);
 
-    return NextResponse.json({
+    return createPrivateReadResponse({
       ...summary,
       totalSavings: savingsAggregate._sum.amount || 0,
       month: targetMonth,

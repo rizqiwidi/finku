@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Calendar, 
@@ -63,10 +63,21 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useTransactions, useDeleteTransactionsBulk } from '@/hooks/use-api';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import {
+  useTransactionHistory,
+  useDeleteTransactionsBulk,
+} from '@/hooks/use-api';
 import { getCategoryIconComponent } from '@/lib/category-icons';
+import { formatDateInputValue } from '@/lib/date-input';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
-import type { Transaction } from '@/types';
+import type { Transaction, TransactionType } from '@/types';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { calculateFinancialSummary } from '@/lib/finance-summary';
@@ -75,6 +86,8 @@ interface TransactionsTableProps {
   onEdit: (transaction: Transaction) => void;
 }
 
+const HISTORY_PAGE_SIZE = 50;
+
 export function TransactionsTable({ onEdit }: TransactionsTableProps) {
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState((today.getMonth() + 1).toString());
@@ -82,30 +95,112 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   
   const month = parseInt(selectedMonth);
   const year = parseInt(selectedYear);
-  
-  const { data: transactions, isLoading } = useTransactions(
-    selectedType === 'all' ? month : undefined,
-    selectedType === 'all' ? year : undefined
+  const transactionFilters = {
+    dateFrom,
+    dateTo,
+    month,
+    type:
+      selectedType === 'all'
+        ? undefined
+        : (selectedType as TransactionType),
+    year,
+  };
+
+  const { data: historyData, isLoading } = useTransactionHistory(
+    transactionFilters,
+    { page, pageSize: HISTORY_PAGE_SIZE }
   );
   
   const bulkDeleteMutation = useDeleteTransactionsBulk();
+  const filteredTransactions = historyData?.items ?? [];
+  const totalCount = historyData?.totalCount ?? 0;
+  const totalPages = historyData?.totalPages ?? 0;
 
-  // Filter transactions based on type and date
-  const filteredTransactions = transactions?.filter((t: Transaction) => {
-    const transactionDate = new Date(t.date);
-    const matchesType = selectedType === 'all' || t.type === selectedType;
-    const matchesMonth = transactionDate.getMonth() + 1 === month;
-    const matchesYear = transactionDate.getFullYear() === year;
-    const matchesDateFrom = !dateFrom || transactionDate >= dateFrom;
-    const matchesDateTo = !dateTo || transactionDate <= dateTo;
-    return matchesType && matchesMonth && matchesYear && matchesDateFrom && matchesDateTo;
-  });
+  const buildTransactionParams = (options?: {
+    fields?: 'ids';
+  }) => {
+    const params = new URLSearchParams();
+    params.set('month', month.toString());
+    params.set('year', year.toString());
+
+    if (selectedType !== 'all') {
+      params.set('type', selectedType);
+    }
+
+    if (dateFrom) {
+      params.set('dateFrom', formatDateInputValue(dateFrom));
+    }
+
+    if (dateTo) {
+      params.set('dateTo', formatDateInputValue(dateTo));
+    }
+
+    if (options?.fields) {
+      params.set('fields', options.fields);
+    }
+
+    return params;
+  };
+
+  const fetchAllFilteredTransactions = async () => {
+    const response = await fetch(`/api/transactions?${buildTransactionParams().toString()}`);
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | Transaction[]
+      | null;
+
+    if (!response.ok) {
+      throw new Error(
+        (payload && typeof payload === 'object' && 'error' in payload && payload.error) ||
+          'Gagal memuat transaksi.'
+      );
+    }
+
+    return (Array.isArray(payload) ? payload : []) as Transaction[];
+  };
+
+  const fetchAllFilteredTransactionIds = async () => {
+    const response = await fetch(
+      `/api/transactions?${buildTransactionParams({ fields: 'ids' }).toString()}`
+    );
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string; ids?: string[] }
+      | null;
+
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Gagal memuat id transaksi.');
+    }
+
+    return Array.isArray(payload?.ids) ? payload.ids : [];
+  };
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedMonth, selectedYear, selectedType, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    const validIds = new Set(filteredTransactions.map((transaction) => transaction.id));
+    setSelectedIds((current) => {
+      const next = new Set(
+        [...current].filter((transactionId) => validIds.has(transactionId))
+      );
+
+      return next.size === current.size ? current : next;
+    });
+  }, [filteredTransactions]);
 
   // Toggle selection
   const toggleSelection = (id: string) => {
@@ -120,9 +215,9 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
 
   // Toggle all selection
   const toggleAllSelection = () => {
-    if (filteredTransactions && selectedIds.size === filteredTransactions.length) {
+    if (filteredTransactions.length > 0 && selectedIds.size === filteredTransactions.length) {
       setSelectedIds(new Set());
-    } else if (filteredTransactions) {
+    } else {
       setSelectedIds(new Set(filteredTransactions.map((t: Transaction) => t.id)));
     }
   };
@@ -151,18 +246,19 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
   }));
 
   // Calculate totals
-  const summary = calculateFinancialSummary(filteredTransactions ?? []);
+  const summary = calculateFinancialSummary(filteredTransactions);
   const totalIncome = summary.income;
   const totalExpense = summary.expenses;
   const totalSavings = summary.savings;
   const balance = summary.balance;
 
   // Export to CSV
-  const exportToCSV = () => {
-    if (!filteredTransactions || filteredTransactions.length === 0) return;
-    
+  const exportToCSV = async () => {
+    if (filteredTransactions.length === 0) return;
+
+    const allTransactions = await fetchAllFilteredTransactions();
     const headers = ['Tanggal', 'Deskripsi', 'Kategori', 'Tipe', 'Jumlah'];
-    const rows = filteredTransactions.map((t: Transaction) => [
+    const rows = allTransactions.map((t: Transaction) => [
       formatDate(new Date(t.date)),
       t.description,
       t.category.name,
@@ -182,11 +278,16 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
 
   // Delete all transactions
   const handleDeleteAll = async () => {
-    if (!filteredTransactions || filteredTransactions.length === 0) return;
-    
+    if (totalCount === 0) return;
+
     setIsDeletingAll(true);
     try {
-      await bulkDeleteMutation.mutateAsync(filteredTransactions.map((transaction) => transaction.id));
+      const allIds = await fetchAllFilteredTransactionIds();
+      if (allIds.length === 0) {
+        return;
+      }
+
+      await bulkDeleteMutation.mutateAsync(allIds);
       setSelectedIds(new Set());
     } catch (error) {
       console.error('Error deleting transactions:', error);
@@ -374,7 +475,7 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={!filteredTransactions || filteredTransactions.length === 0 || isDeletingAll}
+                    disabled={filteredTransactions.length === 0 || isDeletingAll}
                     className="text-rose-600 dark:text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 border-rose-500/30"
                   >
                     {isDeletingAll ? (
@@ -392,7 +493,7 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
                       Hapus Semua Transaksi?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Tindakan ini akan menghapus <strong className="text-foreground">{filteredTransactions?.length || 0} transaksi</strong> yang sedang ditampilkan.
+                      Tindakan ini akan menghapus <strong className="text-foreground">{totalCount} transaksi</strong> yang sesuai filter aktif.
                       Data yang sudah dihapus tidak dapat dikembalikan.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -412,7 +513,7 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
                 variant="outline"
                 size="sm"
                 onClick={exportToCSV}
-                disabled={!filteredTransactions || filteredTransactions.length === 0}
+                disabled={totalCount === 0}
               >
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV
@@ -530,7 +631,7 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
             ) : (
               <>
                 <div className="space-y-2 sm:hidden">
-                  {filteredTransactions?.map((transaction: Transaction, index: number) => {
+                  {filteredTransactions.map((transaction: Transaction, index: number) => {
                     const IconComponent = getCategoryIconComponent(transaction.category.icon);
                     const isSelected = selectedIds.has(transaction.id);
 
@@ -637,7 +738,7 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
                             onClick={toggleAllSelection}
                             className="rounded p-1 transition-colors hover:bg-muted"
                           >
-                            {filteredTransactions && selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 ? (
+                            {selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0 ? (
                               <CheckSquare className="w-4 h-4 text-emerald-500" />
                             ) : (
                               <Square className="w-4 h-4 text-muted-foreground" />
@@ -653,7 +754,7 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredTransactions?.map((transaction: Transaction, index: number) => {
+                      {filteredTransactions.map((transaction: Transaction, index: number) => {
                         const IconComponent = getCategoryIconComponent(transaction.category.icon);
                         const isSelected = selectedIds.has(transaction.id);
 
@@ -753,13 +854,55 @@ export function TransactionsTable({ onEdit }: TransactionsTableProps) {
               </>
             )}
             
-            {!isLoading && (!filteredTransactions || filteredTransactions.length === 0) && (
+            {!isLoading && filteredTransactions.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <Receipt className="w-10 h-10 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">Tidak ada transaksi untuk periode yang dipilih</p>
               </div>
             )}
           </ScrollArea>
+          {!isLoading && totalPages > 1 ? (
+            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                Menampilkan {(page - 1) * HISTORY_PAGE_SIZE + 1}-{Math.min(page * HISTORY_PAGE_SIZE, totalCount)} dari {totalCount} transaksi
+              </p>
+              <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      aria-disabled={page <= 1}
+                      className={cn(page <= 1 && 'pointer-events-none opacity-50')}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page > 1) {
+                          setPage((current) => current - 1);
+                        }
+                      }}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <span className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium">
+                      {page} / {totalPages}
+                    </span>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      aria-disabled={page >= totalPages}
+                      className={cn(page >= totalPages && 'pointer-events-none opacity-50')}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page < totalPages) {
+                          setPage((current) => current + 1);
+                        }
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </motion.div>
